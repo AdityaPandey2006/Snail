@@ -4,6 +4,8 @@
 #include "repl.h"
 #define COMMANDSIZE 50
 
+
+
 int readInput(){
     char command[COMMANDSIZE];
     printPrompt();
@@ -25,7 +27,7 @@ int readInput(){
     }
     else if(feof(stdin)){
         printf("BYE SNAILER");
-        return 1;
+        return 1;//ctrl+d should exit the file
     }
     else if(ferror(stdin)){
         printf("Error reading the input");
@@ -33,6 +35,7 @@ int readInput(){
     }
     return 1;
 }
+
 
 
 void replStart(){
