@@ -1,4 +1,4 @@
-#include "ls.h"
+#include "lsCommand.h"
 #include<stdio.h>
 #include<dirent.h>
 #include<stdlib.h>

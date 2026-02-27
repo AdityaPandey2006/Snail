@@ -1,25 +1,33 @@
 #include "parser.h"
+#include "executor.h"
+#include "exitCommand.h"
+#include "cdCommand.h"
 #include <stdio.h>
+#include <string.h>
 
-void executeCommand(Command* newCommand){
+executorResult executeCommand(Command* newCommand){
+    executorResult result;
     if(newCommand->argCount==0){
         printf("Nothing to Execute");
+        result.shouldExit=0;
+        result.statusCode=0;
         return;
     }
     if(strcmp(newCommand->commandName,"cd")==0){
-        cdCommand(newCommand);
+        result=cdCommand(newCommand);
     }
     else if(strcmp(newCommand->commandName,"mv")==0){
-        mvCommand(newCommand);
+        mvCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"ls")==0){
-        lsCommand(newCommand);
+        lsCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
-        lsCommand(newCommand);
+        result=exitCommand(newCommand);
     }
     else{
-
+        executeExternal(newCommand);
     }
+    return result;
 
 }
