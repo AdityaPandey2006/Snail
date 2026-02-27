@@ -6,7 +6,7 @@
 #include "executor.h"
 
 
-executorResult commandCd(Command* newCommand){
+executorResult cdCommand(Command* newCommand){
     executorResult result;
     if(newCommand->arguments[1]==NULL){
         char*Home=getenv("HOME");

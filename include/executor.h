@@ -10,9 +10,8 @@ typedef struct{
 }executorResult;//will later make executor return this struct
 
 
-executorResult mvCommand(Command* newCommand);
-executorResult cdCommand(Command* newCommand);
-executorResult lsCommand(Command* newCommand);
+
 executorResult executeCommand(Command* newCommand);
+
 
 #endif

@@ -6,6 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-executorResult commandCd(Command* newCommand);
+executorResult cdCommand(Command* newCommand);
 
 #endif

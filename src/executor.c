@@ -11,22 +11,22 @@ executorResult executeCommand(Command* newCommand){
         printf("Nothing to Execute");
         result.shouldExit=0;
         result.statusCode=0;
-        return;
+        return result;
     }
     if(strcmp(newCommand->commandName,"cd")==0){
         result=cdCommand(newCommand);
     }
     else if(strcmp(newCommand->commandName,"mv")==0){
-        mvCommand(newCommand);//todo: have to make the return type as the executorResult
+        // mvCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"ls")==0){
-        lsCommand(newCommand);//todo: have to make the return type as the executorResult
+        // lsCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
-        result=exitCommand(newCommand);
+        result=exitCommand();
     }
     else{
-        executeExternal(newCommand);
+        // executeExternal(newCommand);
     }
     return result;
 

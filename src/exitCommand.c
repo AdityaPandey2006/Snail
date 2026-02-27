@@ -3,7 +3,7 @@
 #include <parser.h>
 #include <executor.h>
 
-executorResult exitCommand(Command* newCommand){
+executorResult exitCommand(){
     executorResult result;
     result.shouldExit=1;
     result.statusCode=0;
