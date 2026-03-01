@@ -4,6 +4,8 @@
 #include "cdCommand.h"
 #include "mkdirCommand.h"
 #include "clearCommand.h"
+#include "externalCommand.h"
+#include <stdio.h>
 #include <string.h>
 
 executorResult executeCommand(Command* newCommand){
@@ -33,7 +35,8 @@ executorResult executeCommand(Command* newCommand){
         result=clearCommand(newCommand);
     }
     else{
-        // executeExternal(newCommand);
+        result=externalCommand(newCommand);
+        
     }
     return result;
 

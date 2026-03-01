@@ -30,7 +30,7 @@ int readInput(){
         }
     }
     else if(feof(stdin)){
-        printf("BYE SNAILER");
+        printf("BYE SNAILER \n");
         return 1;//ctrl+d should exit the file
     }
     else if(ferror(stdin)){
