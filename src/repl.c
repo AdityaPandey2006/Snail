@@ -17,6 +17,10 @@ int readInput(){
         if(strlen(input)==0){
             return 0;
         }//hitting enter should bring the prompt back again, command[enterposition makes string length 0]
+        if (strcmp(input, "\f") == 0 || strcmp(input, "^L") == 0) {
+            printf("\033[H\033[J");
+            return 0;
+        }
         else{
             Command newCommand=parseCommand(input);
             executorResult result;
