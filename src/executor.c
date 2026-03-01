@@ -2,7 +2,8 @@
 #include "executor.h"
 #include "exitCommand.h"
 #include "cdCommand.h"
-#include <stdio.h>
+#include "mkdirCommand.h"
+#include "clearCommand.h"
 #include <string.h>
 
 executorResult executeCommand(Command* newCommand){
@@ -24,6 +25,12 @@ executorResult executeCommand(Command* newCommand){
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
         result=exitCommand();
+    }
+    else if(strcmp(newCommand->commandName,"mkdir")==0){
+        result = mkdirCommand(newCommand);
+    }
+    else if(strcmp(newCommand->commandName,"clear")==0){
+        result=clearCommand(newCommand);
     }
     else{
         // executeExternal(newCommand);
