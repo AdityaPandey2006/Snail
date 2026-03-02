@@ -1,4 +1,4 @@
-#include "ls.h"
+#include "lsCommand.h"
 #include<stdio.h>
 #include<dirent.h>
 #include<stdlib.h>
@@ -68,7 +68,8 @@ executorResult advancedLs(const char*path){
 
 }
 
-executorResult lsCommand(char ** args){
+executorResult lsCommand(Command *cmd){
+    char **args = cmd->arguments;
     char* path = ".";
     if(args[1]==NULL){
         return basicLs(path);

@@ -34,14 +34,16 @@ executorResult fileRemoval(const char *path){
         }
         else{
             perror("Error removing file");
-            fprintf(stderr, "Could not delete file: %s\n",path,strerror(errno));
+            fprintf(stderr, "Could not delete file %s : %s\n",path,strerror(errno));
             return (executorResult){0,1};
         }
 
     }
 }
 
-executorResult rmCommand(char **args){
+executorResult rmCommand(Command *cmd){
+
+    char **args = cmd->arguments;
 
     if(args[1] == NULL){
         printf("rm: missing operand\n");

@@ -181,8 +181,10 @@ executorReturn renameFile(char **args){
 
 
 
-executorReturn mvCommand(char **args){
+executorReturn mvCommand(Command *cmd){
     //recognise what type of funtion wish to perform ....
+    char **args=cmd->arguments;
+
     bool re=false;
     bool over=false;
     bool shift=false;
