@@ -28,7 +28,7 @@ Command parseCommand(char* input){
         emptyCmd.argCount = 0;
         return emptyCmd;
     }
-    char* token=strtok(input," ");
+    char* token=strtok(input,delimiters);
     if(token==NULL){
         free(arguments);
         Command emptyCmd;

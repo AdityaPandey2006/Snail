@@ -2,31 +2,35 @@
 #include <string.h>
 #include "prompt.h"
 #include "repl.h"
+#include "executor.h"
+#include "parser.h"
 #define COMMANDSIZE 50
 
 
 
 int readInput(){
-    char command[COMMANDSIZE];
+    char input[COMMANDSIZE];
     printPrompt();
-    if(fgets(command,sizeof(command),stdin)){
-        int enterPosition=strcspn(command,"\n");
-        command[enterPosition]='\0';
-        if(!strcmp(command,"exit")){
-            printf("BYE SNAILER");
-            return 1;
-        }//TODO: add space-trimming logic to handle empty commands like enter
-        else if(strlen(command)==0){
+    if(fgets(input,sizeof(input),stdin)){
+        int enterPosition=strcspn(input,"\n");
+        input[enterPosition]='\0';
+        if(strlen(input)==0){
             return 0;
         }//hitting enter should bring the prompt back again, command[enterposition makes string length 0]
-        else{
-            printf("Invalid Snail Command \n");
+        if (strcmp(input, "\f") == 0 || strcmp(input, "^L") == 0) {
+            printf("\033[H\033[J");
             return 0;
-        }//for now all commands are invalid
-//else block will change once parser is included
+        }
+        else{
+            Command newCommand=parseCommand(input);
+            executorResult result;
+            result=executeCommand(&newCommand);
+            freeCommand(&newCommand);
+            return result.shouldExit;
+        }
     }
     else if(feof(stdin)){
-        printf("BYE SNAILER");
+        printf("BYE SNAILER \n");
         return 1;//ctrl+d should exit the file
     }
     else if(ferror(stdin)){

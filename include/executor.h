@@ -4,9 +4,14 @@
 
 #include "parser.h"
 
-void mvCommand(Command* newCommand);
-void cdCommand(Command* newCommand);
-void lsCommand(Command* newCommand);
-void executeCommand(Command* newCommand);
+typedef struct{
+    int shouldExit;
+    int statusCode;
+}executorResult;//will later make executor return this struct
+
+
+
+executorResult executeCommand(Command* newCommand);
+
 
 #endif
