@@ -19,7 +19,7 @@ int commandCd(char**args){
         fprintf(stderr,"Too many arguments\n");
     }
     else{
-        if(chdir(args[1])!=0){
+        if(chdir(args[1])!=0){     //the chdir helps change the cwd(current working directory) for the new process that calls it...
             perror("cd");
         }
     }
