@@ -170,7 +170,7 @@ executorResult renameFile(char **args){
         return (executorResult){0,1};
     }
     if(rename(oldFile,newFile)==0){
-        printf("renamed....'%s' as '%s' /n",oldFile,newFile);
+        printf("renamed....'%s' as '%s' \n",oldFile,newFile);
         return (executorResult){0,0};
     }
     else{

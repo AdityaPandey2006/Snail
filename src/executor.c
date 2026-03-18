@@ -8,6 +8,8 @@
 #include "lsCommand.h"
 #include "mvCommand.h"
 #include "touchCommand.h"
+#include "rmdirCommand.h"
+#include "rmCommand.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -40,8 +42,14 @@ executorResult executeCommand(Command* newCommand){
     else if(strcmp(newCommand->commandName,"touch")==0){
         result=touchCommand(newCommand);
     }
+    else if(strcmp(newCommand->commandName,"rmdir")==0){
+        result=rmdirCommand(newCommand);
+    }
+    else if(strcmp(newCommand->commandName,"rm")==0){
+        result=rmCommand(newCommand);
+    }
     else{
-        result=externalCommand(newCommand);
+        //result=externalCommand(newCommand);
         
     }
     return result;
