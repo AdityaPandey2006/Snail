@@ -7,6 +7,7 @@
 #include "externalCommand.h"
 #include "lsCommand.h"
 #include "mvCommand.h"
+#include "touchCommand.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -35,6 +36,9 @@ executorResult executeCommand(Command* newCommand){
     }
     else if(strcmp(newCommand->commandName,"clear")==0){
         result=clearCommand(newCommand);
+    }
+    else if(strcmp(newCommand->commandName,"touch")==0){
+        result=touchCommand(newCommand);
     }
     else{
         result=externalCommand(newCommand);
