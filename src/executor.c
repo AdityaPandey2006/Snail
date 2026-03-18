@@ -5,6 +5,8 @@
 #include "mkdirCommand.h"
 #include "clearCommand.h"
 #include "externalCommand.h"
+#include "lsCommand.h"
+#include "mvCommand.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -20,16 +22,16 @@ executorResult executeCommand(Command* newCommand){
         result=cdCommand(newCommand);
     }
     else if(strcmp(newCommand->commandName,"mv")==0){
-        // mvCommand(newCommand);//todo: have to make the return type as the executorResult
+        result=mvCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"ls")==0){
-        // lsCommand(newCommand);//todo: have to make the return type as the executorResult
+        result=lsCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
         result=exitCommand();
     }
     else if(strcmp(newCommand->commandName,"mkdir")==0){
-        result = mkdirCommand(newCommand);
+        result =mkdirCommand(newCommand);
     }
     else if(strcmp(newCommand->commandName,"clear")==0){
         result=clearCommand(newCommand);
