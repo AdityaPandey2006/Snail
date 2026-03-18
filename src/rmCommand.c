@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include "rm.h"
+#include "rmCommand.h"
 #include<unistd.h>
 #include<dirent.h>
 #include<stdbool.h>

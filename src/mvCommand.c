@@ -79,50 +79,50 @@ int copyFile(const char *srcPath, const char *destPath) {
 }
 
 //for now only two arguments will be worked upon....
-executorReturn overwrite(char **args){
+executorResult overwrite(char **args){
 
     char *sourcePath = args[0];
     char *destPath   = args[1];
     if(!isfilePath(sourcePath)){
         printf("Source '%s' is not a valid file\n",sourcePath);
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
     if(!isfilePath(destPath)){
         printf("Dest'%s' is not a valid file\n",destPath);
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
     if(rename(sourcePath,destPath)==0){
         printf("Successfully overwritten '%s' with '%s'\n",destPath,sourcePath);
-        return (executorReturn){0,0};
+        return (executorResult){0,0};
     }
     if(errno==EXDEV){
         if(copyFile(sourcePath,destPath)!=0){
             printf("Failed to copy '%s' to '%s' :%s\n",sourcePath,destPath,strerror(errno));
-            return (executorReturn){0,1};
+            return (executorResult){0,1};
         }
         if(unlink(sourcePath)!=0){
             printf("file copied butr coudn't remove source file");
-            return (executorReturn){0,1};
+            return (executorResult){0,1};
         }
         printf("Successfully overwritten '%s' with '%s' across filesystems\n", destPath, sourcePath);
-        return (executorReturn){0, 0};
+        return (executorResult){0, 0};
     }
 
     //any other rename error....in overwritten
     printf("overwrite failed: %s\n",strerror(errno));
-    return (executorReturn){0,1};
+    return (executorResult){0,1};
 }
-executorReturn changeDir(char **args){
+executorResult changeDir(char **args){
     
     char *sourcePath = args[0];
     char *destPath   = args[1];
     if(!isfilePath(sourcePath)){
         printf("Source '%s' is not a valid file\n",sourcePath);
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
     if(!isdirPath(destPath)){
         printf("Dest'%s' is not a valid directory\n",destPath);
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
 
     char fileCopy[1024];
@@ -135,7 +135,7 @@ executorReturn changeDir(char **args){
 
     if(rename(sourcePath,newPath)==0){
         printf("Successfully moved '%s' to new directory...\n",fileName);
-        return (executorReturn){0,0};
+        return (executorResult){0,0};
     }
     else{
         if(errno==EXDEV){
@@ -143,45 +143,45 @@ executorReturn changeDir(char **args){
             if(copyFile(sourcePath,newPath)==0){
                 if(remove(sourcePath)==0){
                     printf("moved %s to %s (across file systems)\n",fileName,destPath);
-                    return (executorReturn){0,0};
+                    return (executorResult){0,0};
                 }
                 else{
                     printf("could not remove the original file..for moving....");
-                    return (executorReturn){0,1};
+                    return (executorResult){0,1};
                 }
             }
             else{
                 perror("error in moving file across file systems\n");
-                return (executorReturn){0,1};
+                return (executorResult){0,1};
             }
         }
         if(errno==EACCES){
             printf("permission required to move");
-            return (executorReturn){0,1};
+            return (executorResult){0,1};
         }
     }
-    return (executorReturn){0,1};
+    return (executorResult){0,1};
 }
-executorReturn renameFile(char **args){
+executorResult renameFile(char **args){
     char*oldFile=args[0];
     char*newFile=args[1];
     if(!isfilePath(oldFile)){
         printf("%s is not a valid file path",oldFile);
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
     if(rename(oldFile,newFile)==0){
         printf("renamed....'%s' as '%s' ",oldFile,newFile);
-        return (executorReturn){0,0};
+        return (executorResult){0,0};
     }
     else{
         perror("error renaming file...");
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
 }
 
 
 
-executorReturn mvCommand(Command *cmd){
+executorResult mvCommand(Command *cmd){
     //recognise what type of funtion wish to perform ....
     char **args=cmd->arguments;
 
@@ -191,7 +191,7 @@ executorReturn mvCommand(Command *cmd){
 
     if(args[1]==NULL){
         printf("please give operational command [re,over,shift]\n");
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
     if(strcmp(args[1],"-re")==0){
         re=true;
@@ -204,12 +204,12 @@ executorReturn mvCommand(Command *cmd){
     }
     else{
         printf("Invalid mv option\n");
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
 
     if(args[2]==NULL || args[3]==NULL || args[4]!=NULL){
         printf("invalid amount of arguments pls try again");
-        return (executorReturn){0,1};
+        return (executorResult){0,1};
     }
 
     if(over){
@@ -221,5 +221,5 @@ executorReturn mvCommand(Command *cmd){
     else if(re){
         return renameFile(&args[2]);
     }
-    return (executorReturn){0,1};
+    return (executorResult){0,1};
 }
