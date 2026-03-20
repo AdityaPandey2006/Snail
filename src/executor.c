@@ -3,6 +3,8 @@
 #include "exitCommand.h"
 #include "cdCommand.h"
 #include "mkdirCommand.h"
+#include "lsCommand.h"
+#include "mvCommand.h"
 #include "clearCommand.h"
 #include "externalCommand.h"
 #include "lsCommand.h"
@@ -29,6 +31,10 @@ executorResult executeCommand(Command* newCommand){
     }
     else if(strcmp(newCommand->commandName,"ls")==0){
         result=lsCommand(newCommand);//todo: have to make the return type as the executorResult
+        mvCommand(newCommand);//todo: have to make the return type as the executorResult
+    }
+    else if(strcmp(newCommand->commandName,"ls")==0){
+        lsCommand(newCommand);//todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
         result=exitCommand();
