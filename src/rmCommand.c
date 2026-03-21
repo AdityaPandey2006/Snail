@@ -9,62 +9,45 @@
 #include <errno.h>
 
 
-//not adding remove directory yet as it can cause. problems in testing that we have left for future scope....
-//for now only implementing file removal .....using rm with -f as an additional command in it ..for force delete of a file
 
-bool fileExists(const char *path){ 
-    if(access(path,F_OK)==0){    //funtion to check existance of file without opening it in linux unistd.h we cna use it in windows but with some extra library calls
-        return true;
+//for now only implementing file removal using rm with -f as an additional command in it for force delete of a file
+
+executorResult fileRemoval(const char *filePath){
+    executorResult result;
+    //simply use remove from stdio if not force remove it acts like mlinux rm anyway
+    if(remove(filePath)==0){
+        result.shouldExit=0;
+        result.statusCode=0;
     }
     else{
-        return false;
+        result.shouldExit=0;
+        result.statusCode=1;
     }
+    return result;
 }
 
-executorResult fileRemoval(const char *path){
-    if(!fileExists(path)){
-        return (executorResult){0,1};  //error ....
+executorResult rmCommand(Command* newCommand){
+    executorResult result;
+    result.shouldExit=0;
+    result.statusCode=0;//in case any deletion fails, this will ater become 1
+    if(newCommand->argCount<2){
+        printf("file name for rm missing\n");
+        result.shouldExit=0;
+        result.statusCode=1;
+        return result;
     }
-    else{
-        //simply use ..remove from stdio if not force remove it acts like mlinux rm anyway
-        int status=remove(path);
-        if(status==0){
-            printf("mah brotha!!...'%s' is removed!!\n",path);
-            return (executorResult){0,0};
+    for(int i=1;newCommand->arguments[i]!=NULL;i++){
+        char* filePath=newCommand->arguments[i];
+        executorResult currentResult=fileRemoval(filePath);
+        if(currentResult.statusCode==1){
+            result.statusCode=1;
+            result.shouldExit=0;
+            perror(filePath);
+            continue;
         }
-        else{
-            perror("Error removing file");
-            fprintf(stderr, "Could not delete file %s : %s\n",path,strerror(errno));
-            return (executorResult){0,1};
-        }
-
     }
+    //can have multiple error status codes instead of it being 1 for all kinds of rm errors
+    return result;
 }
 
-executorResult rmCommand(Command *cmd){
-
-    char **args = cmd->arguments;
-
-    if(args[1] == NULL){
-        printf("rm: missing operand\n");
-        return (executorResult){0,1};
-    }
-    int i=1;int termination=0;
-    while(args[i]!=NULL){
-        char *filePath=args[i];
-        executorResult result=fileRemoval(filePath);
-        if(result.statusCode==1){
-            termination=1;
-            printf("Terminated");
-            break;
-        }
-        i++;
-    }
-    if(termination){
-        return (executorResult){0,1};
-    }
-    else{
-        return (executorResult){0,0};
-    }
-}
-
+//will be implementing an interactive deletion option later

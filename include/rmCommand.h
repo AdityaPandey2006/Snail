@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
-executorResult rmCommand(Command *cmd);
+
+executorResult fileRemoval(const char *filePath);
+executorResult rmCommand(Command *newCommand);
 
 #endif

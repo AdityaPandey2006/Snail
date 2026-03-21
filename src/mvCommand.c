@@ -65,7 +65,7 @@ int copyFile(const char *srcPath, const char *destPath) {
     }
 
     off_t offset = 0;
-   ssize_t bytes = sendfile(dest, src, &offset, st.st_size);
+    ssize_t bytes = sendfile(dest, src, &offset, st.st_size);
     if (bytes < 0) {
         close(src);
         close(dest);

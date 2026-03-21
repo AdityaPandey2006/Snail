@@ -70,6 +70,8 @@ int readInput(){
 
 void replStart(){
     snailPrinter();
+    //int startLoop=clearDump()
+    //while(startLoop)
     while(1){
         int quit=readInput();
         if(quit){
