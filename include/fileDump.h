@@ -3,8 +3,8 @@
 
 
 int makeDumpFolder();
-int clearDump();
-// void fileRestore()
+int cleanDump();
+int fileRestore();
 int sendToDump(char* entryPath);// both files and folders can be sent to the dump. Calling files and folders together as entries
 #endif
 
