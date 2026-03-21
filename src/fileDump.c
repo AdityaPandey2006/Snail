@@ -53,7 +53,7 @@ int cleanDump(){
             printf("File Dump Creation Error\n");
             startLoop=0;
             return startLoop;
-//this function is called at the start of each time the shell runs and if the dump file could not be created, once exits the execution of the loop furthur
+    //this function is called at the start of each time the shell runs and if the dump file could not be created, once exits the execution of the loop furthur
         }
     }
     DIR* dumpDir=opendir(dumpPath);
@@ -196,6 +196,108 @@ int sendToDump(char* entryPath){
     return success;
 }
 
-int fileRestore(){
+bool startName(char* fileName,char* currentName){
+    int count=0;
+    char* current=(char*)malloc(PATH_MAX*(sizeof(char)));
+    for(int i=0;currentName[i] != '\0' && currentName[i]!='_';i++){
+        current[count++]=currentName[i];
+    }
+    current[count]='\0';
+    current=(char*)realloc(current, (count + 1) * sizeof(char));
+    
+    int i = 0;
+    while(fileName[i] != '\0' && current[i] != '\0'){
+        if(fileName[i] != current[i]){
+            free(current);
+            return false;
+        }
+        i++;
+    }
+    bool result = (fileName[i] == '\0' && current[i] == '\0');
+    free(current);
+    return result;
+}
 
+int fileRestore(Command* newCmd){
+    int success=1;
+    char* home=getenv("HOME");
+    char dumpPath[PATH_MAX];
+    char dumpFilesPath[PATH_MAX];
+    char dumpInfoPath[PATH_MAX];
+
+    sprintf(dumpPath,"%s/.snailDump/",home);
+    sprintf(dumpFilesPath,"%s/files/",dumpPath);
+    sprintf(dumpInfoPath,"%s/info/",dumpPath);
+
+    //if the dump does not exist just return 0..
+    if(access(dumpPath,F_OK)!=0 || access(dumpFilesPath,F_OK)!=0 || access(dumpInfoPath,F_OK)!=0){
+        printf("Apologies the snailDump is currently empty.\n");
+        return 0;
+    }
+    //
+    // quick restore type :restore fileName.ext
+
+    //else we have a file there 
+    char*fileName=newCmd->arguments[1];
+    //
+    DIR* dumpFile=opendir(dumpFilesPath);
+    struct dirent* entry;
+
+    while((entry=readdir(dumpFile))!=NULL){
+        if(strcmp(entry->d_name,".")==0||strcmp(entry->d_name,"..")==0){
+            continue;
+        }
+        char* currName=entry->d_name;
+        //file name is in the form of name.txt_deletiontime and at end .snailInfo if its in Info folder...
+        if(startName(fileName,currName)){
+            //now get the data from the .snailInfo path
+            char infoPath[PATH_MAX];
+            char dataPath[PATH_MAX];
+            sprintf(infoPath,"%s%s.snailInfo",dumpInfoPath,currName);
+            sprintf(dataPath,"%s%s",dumpFilesPath,currName);
+            //we have the infoPath now...now we have to open the file and read it 
+            if(access(infoPath,F_OK)!=0){
+                printf("Something is wrong this file's metadata doesnt exist cant retrieve..\n");
+                return success=0;
+            }
+            char destPath[PATH_MAX];
+            FILE* fPath=fopen(infoPath,"r");
+            if(fPath==NULL){
+                return 0;
+            }
+            char buffer[1024];
+            char wanted[]="Path:";
+
+            while(fgets(buffer,sizeof(buffer),fPath)){
+                if(strncmp(buffer,wanted,5)==0){    //as end contians '\n' so need to add till what number we have to check 
+                    break;
+                }
+            }
+            if(fgets(destPath,sizeof(destPath),fPath)==NULL){
+                fclose(fPath);
+                success=0;
+                break;
+            }
+            fclose(fPath);
+            //NOW  we have the destination path of the original file ....now simply shift
+
+            destPath[strcspn(destPath, "\n")] = '\0';
+            //last of the path had \n so strip it
+
+            if(rename(dataPath,destPath)!=0){
+                printf("Couldnt retrieve");
+                success=0;
+                break;
+            }
+            if(remove(infoPath)!=0){
+                printf("Couldnt delete metadata");
+                success=0;
+                break;
+            }
+            break;
+        }
+
+    }
+    closedir(dumpFile);
+    return success;
 }
