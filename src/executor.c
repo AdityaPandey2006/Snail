@@ -12,6 +12,7 @@
 #include "touchCommand.h"
 #include "rmdirCommand.h"
 #include "rmCommand.h"
+#include "treeCommand.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -53,6 +54,9 @@ executorResult executeCommand(Command* newCommand){
     }
     else if(strcmp(newCommand->commandName,"rm")==0){
         result=rmCommand(newCommand);
+    }
+    else if (strcmp(newCommand->commandName, "tree") == 0) {
+        return treeCommand(newCommand);
     }
     else{
         //result=externalCommand(newCommand);
