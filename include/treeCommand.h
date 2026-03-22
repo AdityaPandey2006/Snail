@@ -4,6 +4,6 @@
 #include "parser.h"
 #include "executor.h"
 
-executorResult treeCommand(Command* newCommand);
+executorResult fileTreeCommand(Command* newCommand);
 
 #endif
