@@ -4,6 +4,6 @@
 #include "parser.h"
 #include "executor.h"
 
-executorResult dumpList(Command* newCmd); // to show content of snailDump
+executorResult dumpList(Command* newCommand); // to show content of snailDump
 
 #endif
