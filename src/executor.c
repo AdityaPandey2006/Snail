@@ -57,10 +57,10 @@ executorResult executeCommand(Command* newCommand){
         result=rmCommand(newCommand);
     }
     else if (strcmp(newCommand->commandName, "tree") == 0) {
-        return treeCommand(newCommand);
+        return fileTreeCommand(newCommand);
     }
     else if (strcmp(newCommand->commandName, "dumplist") == 0) {
-        result = dumpList(newCommand);
+        // result = dumpList(newCommand);
     }
     else{
         //result=externalCommand(newCommand);
