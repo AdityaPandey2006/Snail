@@ -13,6 +13,7 @@
 #include "rmdirCommand.h"
 #include "rmCommand.h"
 #include "treeCommand.h"
+#include "dumpList.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -57,6 +58,9 @@ executorResult executeCommand(Command* newCommand){
     }
     else if (strcmp(newCommand->commandName, "tree") == 0) {
         return treeCommand(newCommand);
+    }
+    else if (strcmp(newCommand->commandName, "dumplist") == 0) {
+        result = dumpList(newCommand);
     }
     else{
         //result=externalCommand(newCommand);
