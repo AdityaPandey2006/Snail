@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
+#include<stdbool.h>
 #include <time.h>
 int makeDumpFolder(){
     char* home=getenv("HOME");
@@ -300,4 +301,4 @@ int fileRestore(Command* newCmd){
     }
     closedir(dumpFile);
     return success;
-}
+}  

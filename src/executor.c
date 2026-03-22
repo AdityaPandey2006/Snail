@@ -56,7 +56,7 @@ executorResult executeCommand(Command* newCommand){
         result=rmCommand(newCommand);
     }
     else if (strcmp(newCommand->commandName, "tree") == 0) {
-        return treeCommand(newCommand);
+        result= treeCommand(newCommand);
     }
     else{
         //result=externalCommand(newCommand);

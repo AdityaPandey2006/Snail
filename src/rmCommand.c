@@ -65,27 +65,40 @@ void enableRawMode(struct termios *old) {
 void disableRawMode(struct termios *old) {
     tcsetattr(STDIN_FILENO, TCSANOW, old);
 }
-void redraw(fileEntry *entries, int count, int cursor) {
-    int show = count<10?count:10;
-    printf("\033[2J\033[H");  // clear screen, move to top
 
-    //instructuions....
+void redraw(fileEntry *entries, int count, int cursor) {
+    int show = count < 10 ? count : 10;
+
+    // move cursor UP to overwrite previous UI
+    printf("\033[%dA", show + 3);
+
+    printf("\033[J"); // clear below
+
     printf("Use UP/DOWN to navigate, SPACE to select, ENTER to confirm\n\n");
 
     for (int i = 0; i < show; i++) {
         if (i == cursor) printf("\033[7m");
+
         printf("[%s] %-30s  %.1f MB  %.0f days old  score: %.1f\n",
             entries[i].selected ? "x" : " ",
             entries[i].name,
             entries[i].size / 1e6,
             entries[i].lastUsed,
             entries[i].score);
-        if (i == cursor) printf("\033[0m");  // reset
+
+        if (i == cursor) printf("\033[0m");
     }
+
+    fflush(stdout);
 }
 
 executorResult interactiveRemoval(char*dirPath){
     //check if the argument after -i is valid or not
+
+    if(dirPath == NULL) {
+        return (executorResult){0, 1};
+    }
+
     if(!isDir(dirPath)){
         return (executorResult){0,1};
     }
@@ -140,12 +153,28 @@ executorResult interactiveRemoval(char*dirPath){
     int show=count<10? count:10;
     int cursor=0;
     struct termios old;
+
+    int move= count < 10 ? count : 10;
+    printf("\n");  // move below command
+    // reserve space so moving up works
+    for (int i = 0; i < move + 7; i++) printf("\n");
+
+    fflush(stdout);
+    tcflush(STDIN_FILENO, TCIFLUSH);
+
+
     enableRawMode(&old);
 
     while(true){
         redraw(entries,count,cursor); 
         char c=getchar();
-        
+        if(c=='x' || c=='X'){
+            disableRawMode(&old);
+            executorResult result;
+            result.shouldExit=0;
+            result.statusCode=1;
+            return result;
+        }
         if(c=='\033'){
             getchar();
             char arrow=getchar();
@@ -173,13 +202,14 @@ executorResult interactiveRemoval(char*dirPath){
     result.shouldExit=0;
     result.statusCode=0;
 
-    //this extra two lines of flush were wriitten to drain extra characers if use accidentally presse extra characters before conformation to not cause wrong confitrm
-    int flush;
-    while ((flush = getchar()) != '\n' && flush != EOF);
-
     printf("\nReclaimable: %.2f MB of space\n",totalSize/1e6);
-    printf("Confirm Delete? (Y/N): ");
-    char confirmation=getchar();
+    //this extra two lines of flush were wriitten to drain extra characers if use accidentally presse extra characters before conformation to not cause wrong confitrm
+    printf("Confirm Deletion ? (Y/N): ");
+    fflush(stdout);
+    int confirmation;
+    do {
+        confirmation = getchar();
+    } while (confirmation == '\n' || confirmation == '\r');
 
     if(confirmation=='Y' || confirmation=='y'){
         for(int i=0;i<show;i++){
@@ -219,10 +249,16 @@ executorResult rmCommand(Command* newCommand){
         result.statusCode=1;
         return result;
     }
-    if(strcmp(newCommand->arguments[1],"-i")==0){
-        executorResult currResult=interactiveRemoval(newCommand->arguments[2]);
+    if(strcmp(newCommand->arguments[1], "-i") == 0) {
+        if(newCommand->argCount < 3 || newCommand->arguments[2] == NULL) {
+            printf("rm -i: missing directory path\n");
+            result.statusCode = 1;
+            return result;
+        }
+        executorResult currResult = interactiveRemoval(newCommand->arguments[2]);
         return currResult;
     }
+
     for(int i=1;newCommand->arguments[i]!=NULL;i++){
         char* filePath=newCommand->arguments[i];
         executorResult currentResult=fileRemoval(filePath);
