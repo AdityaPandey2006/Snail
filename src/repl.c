@@ -4,6 +4,7 @@
 #include "repl.h"
 #include "executor.h"
 #include "parser.h"
+#include "fileDump.h"
 #define COMMANDSIZE 50
 
 void snailPrinter(){
@@ -69,9 +70,11 @@ int readInput(){
 
 
 void replStart(){
+    int dumpCleanSuccess=cleanDump();
+    if(!dumpCleanSuccess){
+        printf("Warning: Dump cleanup error\n");
+    }
     snailPrinter();
-    //int startLoop=clearDump()
-    //while(startLoop)
     while(1){
         int quit=readInput();
         if(quit){
