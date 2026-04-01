@@ -12,6 +12,7 @@ typedef struct{
     int argCount;//0-based indexing for now
 }Command;
 
+
 Command parseCommand(char* input);
 void freeCommand(Command *cmd);
 

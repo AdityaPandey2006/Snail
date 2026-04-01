@@ -69,7 +69,7 @@ int readInput(){
 
 
 void replStart(){
-    snailPrinter();
+    //snailPrinter();
     //int startLoop=clearDump()
     //while(startLoop)
     while(1){
