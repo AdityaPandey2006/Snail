@@ -10,6 +10,7 @@
 #include <errno.h>
 #include<time.h>
 #include<termios.h>
+#include "terminal.h"
 
 typedef struct {
     char *fullPath;
@@ -52,18 +53,6 @@ bool isDir(const char *path) {
 
 int cmp(const void *a,const void *b){
     return ((fileEntry*)b)->score > ((fileEntry*)a)->score ? 1 : -1;
-}
-
-//for keyboard controls purely...
-void enableRawMode(struct termios *old) {
-    struct termios raw;
-    tcgetattr(STDIN_FILENO, old);
-    raw = *old;
-    raw.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &raw);
-}
-void disableRawMode(struct termios *old) {
-    tcsetattr(STDIN_FILENO, TCSANOW, old);
 }
 
 void redraw(fileEntry *entries, int count, int cursor) {
