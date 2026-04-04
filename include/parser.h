@@ -12,8 +12,14 @@ typedef struct{
     int argCount;//0-based indexing for now
 }Command;
 
+typedef struct{
+    Command *command;  //array of commands 
+    int numCommands;
+}Pipeline;
 
+Pipeline parsePipes(char* input);
 Command parseCommand(char* input);
 void freeCommand(Command *cmd);
+void freePipes(Pipeline* pip,int count);
 
 #endif

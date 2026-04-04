@@ -9,6 +9,7 @@
 #include<unistd.h>
 #include "commandHistory.h"
 #include "terminal.h"
+#include<stdbool.h>
 
 #define COMMANDSIZE 256
 
@@ -171,7 +172,7 @@ int readInput(){
         //ctrl + D to close the shell 
         else if(c==4){
             disableRawMode(&old);
-            printf("BYE SNAILER!! See ya again!\n");
+            printf("BYE SNAILER!!\n");
             return 1;
 
         }
@@ -203,19 +204,41 @@ int readInput(){
     if(strlen(input) == 0){
         return 0;
     }
-    Command newCommand = parseCommand(input);
-    // newEntry(&newCommand); //already reading this in time of executor.c
-    executorResult result = executeCommand(&newCommand);
-    freeCommand(&newCommand);
+    //now here add a loop that allows the parsing of command accrdint to existance of the pipes
+    char *st=input;
+    bool isPipe=false;
+    while(*st!='\0'){
+        if(*st=='|'){
+            isPipe=true;
+            break;
+        }
+        st++;
+    }
+    executorResult result;
+    if(!isPipe){
+        Command newCommand = parseCommand(input);
+        // newEntry(&newCommand); //already reading this in time of executor.c
+        result=executeCommand(&newCommand);
+        freeCommand(&newCommand);
+    }
+    else{
+        Pipeline newPipe=parsePipes(input);
+        if(newPipe.numCommands==0){
+            fprintf(stderr, "Invalid pipeline\n");
+            return 0;
+        }
+        result=executePipes(&newPipe);
+        freePipes(&newPipe,newPipe.numCommands);
+    }
     return result.shouldExit;
 }
 
 
 void replStart(){
-    int dumpCleanSuccess=cleanDump();
-    if(!dumpCleanSuccess){
-        printf("Warning: Dump cleanup error\n");
-    }
+    // int dumpCleanSuccess=cleanDump();
+    // if(!dumpCleanSuccess){
+    //     printf("Warning: Dump cleanup error\n");
+    // }
     unloadHistory();//to load the data in an array...
     atexit(loadHistory); //auto save the data
     snailPrinter();

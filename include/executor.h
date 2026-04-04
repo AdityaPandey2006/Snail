@@ -12,6 +12,6 @@ typedef struct{
 
 
 executorResult executeCommand(Command* newCommand);
-
+executorResult executePipes(Pipeline* newPipe);
 
 #endif
