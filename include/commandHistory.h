@@ -19,6 +19,7 @@ void checkExistance();
 void unloadHistory();
 void newEntry(Command* cmd);
 void loadHistory();
+void newEntryPipe(Pipeline* pip);
 
 // Helper functions
 char** convertToArgs(char *buffer, int *argCount);

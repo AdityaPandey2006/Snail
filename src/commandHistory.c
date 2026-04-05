@@ -8,11 +8,21 @@
 historyEntry History[MAX_SIZE];
 int currentSize=0;
 
+static const char *historyFilePath(void){
+    const char *home = getenv("HOME");
+    if(home == NULL){
+        return ".snailCHistory";
+    }
+    static char path[1024];
+    snprintf(path, sizeof(path), "%s/.snailCHistory", home);
+    return path;
+}
+
 void checkExistance(){
     FILE *f;
-    f=fopen("/mnt/c/Users/ASUS/OneDrive/Documents/GitHub/Snail/history.txt","r"); //read only mode if file not exist returns a NULL value so then we create a new fuile
+    f=fopen(historyFilePath(),"r"); //read only mode if file not exist returns a NULL value so then we create a new fuile
     if(f==NULL){
-        FILE *wp=fopen("/mnt/c/Users/ASUS/OneDrive/Documents/GitHub/Snail/history.txt","a"); //a mode as from a mode we can create a nnew file incase it doesnt exist and if it does it simply is used for appending sometghing
+        FILE *wp=fopen(historyFilePath(),"a"); //a mode as from a mode we can create a nnew file incase it doesnt exist and if it does it simply is used for appending sometghing
         fclose(wp);
         return;
     }
@@ -26,7 +36,7 @@ void checkExistance(){
 void unloadHistory(){  
     
     checkExistance();
-    FILE *f=fopen("/mnt/c/Users/ASUS/OneDrive/Documents/GitHub/Snail/history.txt","r");  //to only read and writr
+    FILE *f=fopen(historyFilePath(),"r");  //to only read and writr
     if (f==NULL) {
         printf("Error: Could not open file.\n");
         return;
@@ -61,8 +71,38 @@ void newEntry(Command* cmd){
             strcat(buffer, " ");
         }
     }
-    //needed as in the strucure above is a fixed array and argument s is a dynamic different
+    //needed as in the strucure above is a fixed array and argument s is a dynamic plus its parsed into commands separately need to merge with spaces
 
+    if(currentSize<MAX_SIZE){
+        strcpy(History[currentSize++].cmd,buffer);//new entry
+        return;
+    }
+    else{
+        for(int i=0;i<MAX_SIZE-1;i++){
+            strcpy(History[i].cmd,History[i+1].cmd);
+        }
+        strcpy(History[MAX_SIZE-1].cmd,buffer);
+        return;
+    }
+}
+
+void newEntryPipe(Pipeline* pip){
+    char buffer[1024]="";
+    for(int i=0;i<pip->numCommands;i++){
+        char temp[256]="";
+        for(int j=0;j<pip->command[i].argCount;j++){
+            strcat(temp, pip->command[i].arguments[j]);
+            if(j!=pip->command[i].argCount-1){
+                strcat(temp, " ");
+            }
+        }
+        strcat(temp," | ");
+        strcat(buffer,temp);
+    }
+    //remove a trailing temp
+    if(strlen(buffer)>=3){
+        buffer[strlen(buffer)-3]='\0';
+    }
     if(currentSize<MAX_SIZE){
         strcpy(History[currentSize++].cmd,buffer);//new entry
         return;
@@ -78,7 +118,7 @@ void newEntry(Command* cmd){
 
 void loadHistory(){
     //enf of every session we should load the array data back into txt file
-    FILE*f=fopen("/mnt/c/Users/ASUS/OneDrive/Documents/GitHub/Snail/history.txt","w");
+    FILE*f=fopen(historyFilePath(),"w");
     if(f==NULL){
         printf("Error: Could not save history.\n");
         return;

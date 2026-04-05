@@ -48,7 +48,7 @@ Pipeline parsePipes(char* input){
         while(*token==' ' || *token=='\t' || *token=='\r' || *token=='\n'){
             token++;
         }
-        if(*token == '\0'){
+        if(*token=='\0'){
             freePipes(&result,count);
             result.numCommands = 0;
             return result;
@@ -97,7 +97,7 @@ Pipeline parsePipes(char* input){
 
 
 Command parseCommand(char* input){
-    char delimiters[]=" \t\r\n"; 
+    char delimiters[]=" \r\t\n"; 
     int capacity=8;
     int argCount=0;
     char** arguments=(char **)malloc(capacity*sizeof(char*));

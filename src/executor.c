@@ -117,7 +117,7 @@ executorResult executeBuiltIn(Command *cmd){
 executorResult executePipes(Pipeline* newPipe){
     //main for pipes ....
     //need to use fork to make all the children of parent process work simultaneosly
-    //newEntry(newPipe); //TODO: implemnt for pipelines.
+    newEntryPipe(newPipe);
     int n=newPipe->numCommands;
     int prevFd=-1;
     for(int i=0;i<n;i++){
