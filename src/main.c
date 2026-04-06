@@ -7,6 +7,7 @@ void handle_sigint(int sig) {
     (void)sig;
     printf("\n");
     
+    refreshPromptTimestamp();
     printPrompt();
 }
 

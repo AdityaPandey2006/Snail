@@ -12,6 +12,9 @@
 #include<string.h>
 #include"executor.h"
 
+static int isDotEntry(const char *name){
+    return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
+}
 
 executorResult basicLs(const char *path){
     DIR *dir=opendir(path);
@@ -21,6 +24,9 @@ executorResult basicLs(const char *path){
         return (executorResult){0, 1};
     }
     while((entry=readdir(dir))!=NULL){
+        if(isDotEntry(entry->d_name)){
+            continue;
+        }
         printf("%s\n",entry->d_name);
     }
 
@@ -38,6 +44,9 @@ executorResult advancedLs(const char*path){
     }
     
     while((entry=readdir(dir))!=NULL){
+        if(isDotEntry(entry->d_name)){
+            continue;
+        }
         char fullpath[1024];
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name); //created full path because ....entry->d_name is relative the the current folder ....so need the full path for safe measure s in
         //case want to open file /folder from other resources....
@@ -83,4 +92,3 @@ executorResult lsCommand(Command *cmd){
     }
     return basicLs(args[1]);
 }
-

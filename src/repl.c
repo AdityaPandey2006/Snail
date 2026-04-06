@@ -2,6 +2,7 @@
 #include <string.h>
 #include "prompt.h"
 #include "repl.h"
+#include "config.h"
 #include "executor.h"
 #include "parser.h"
 #include "fileDump.h"
@@ -10,6 +11,7 @@
 #include "commandHistory.h"
 #include "terminal.h"
 #include<stdbool.h>
+#include <time.h>
 
 #define COMMANDSIZE 256
 
@@ -29,6 +31,10 @@ void disableRawMode(struct termios *old){
 }
 
 void snailPrinter(){
+    const SnailConfig *config = getSnailConfig();
+    if(!config->show_snail_art){
+        return;
+    }
         printf(
 "                                                              d::\n"
 "                                                              ''d$:     :h\n"
@@ -56,12 +62,47 @@ void snailPrinter(){
 return;
 }
 
+static void executeConfiguredCommand(const char *commandText){
+    if(commandText == NULL || commandText[0] == '\0'){
+        return;
+    }
+
+    char buffer[COMMANDSIZE] = {0};
+    strncpy(buffer, commandText, sizeof(buffer) - 1);
+
+    int hasPipe = 0;
+    for(char *cursor = buffer; *cursor != '\0'; cursor++){
+        if(*cursor == '|'){
+            hasPipe = 1;
+            break;
+        }
+    }
+
+    if(!hasPipe){
+        Command newCommand = parseCommand(buffer);
+        if(newCommand.commandName != NULL){
+            executorResult result = executeCommand(&newCommand);
+            (void)result;
+        }
+        freeCommand(&newCommand);
+    }
+    else{
+        Pipeline newPipe = parsePipes(buffer);
+        if(newPipe.numCommands > 0){
+            executorResult result = executePipes(&newPipe);
+            (void)result;
+        }
+        freePipes(&newPipe, newPipe.numCommands);
+    }
+}
+
 int readInput(){
     char input[COMMANDSIZE] = "";
     int cursorPos=0;
     int len = 0;
     struct termios old;
     enableRawMode(&old);
+    refreshPromptTimestamp();
     printPrompt();
     int historyIndex = currentSize;
     while(1){
@@ -165,6 +206,7 @@ int readInput(){
         // Ctrl + L to clear screen
         else if(c==12){
             printf("\033[H\033[J");
+            refreshPromptTimestamp();
             printPrompt();
             printf("%s", input);
             fflush(stdout);
@@ -215,6 +257,9 @@ int readInput(){
         st++;
     }
     executorResult result;
+    struct timespec startTime;
+    struct timespec endTime;
+    clock_gettime(CLOCK_MONOTONIC, &startTime);
     if(!isPipe){
         Command newCommand = parseCommand(input);
         // newEntry(&newCommand); //already reading this in time of executor.c
@@ -230,18 +275,37 @@ int readInput(){
         result=executePipes(&newPipe);
         freePipes(&newPipe,newPipe.numCommands);
     }
+    clock_gettime(CLOCK_MONOTONIC, &endTime);
+    long long durationMs = (endTime.tv_sec - startTime.tv_sec) * 1000LL +
+                           (endTime.tv_nsec - startTime.tv_nsec) / 1000000LL;
+    setLastCommandDurationMs(durationMs);
+    setLastCommandStatus(result.statusCode);
     return result.shouldExit;
 }
 
 
 void replStart(){
-    int dumpCleanSuccess=cleanDump();
-    if(!dumpCleanSuccess){
-        printf("Warning: Dump cleanup error\n");
+    if(!ensureSnailConfigExists()){
+        fprintf(stderr, "Warning: could not create ~/snailShellrc, using in-memory defaults\n");
+    }
+    loadSnailConfig();
+
+    const SnailConfig *config = getSnailConfig();
+    if(config->clear_screen_on_start){
+        printf("\033[H\033[J");
+    }
+    if(config->clean_dump_on_start){
+        int dumpCleanSuccess=cleanDump();
+        if(!dumpCleanSuccess){
+            printf("Warning: Dump cleanup error\n");
+        }
     }
     unloadHistory();//to load the data in an array...
     atexit(loadHistory); //auto save the data
     snailPrinter();
+    for(int i = 0; i < config->startup_command_count; i++){
+        executeConfiguredCommand(config->startup_commands[i]);
+    }
     while(1){
         int quit=readInput();
         if(quit){ 

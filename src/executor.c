@@ -12,6 +12,8 @@
 #include "rmCommand.h"
 #include "treeCommand.h"
 #include "dumpList.h"
+#include "snailHelp.h"
+#include "reloadConfig.h"
 #include "touchCommand.h"
 #include <stdio.h>
 #include <string.h>
@@ -76,10 +78,13 @@ int isBuiltIn(Command* newCommand){
     (strcmp(newCommand->commandName,"ls")==0)||
     (strcmp(newCommand->commandName,"exit")==0)||
     (strcmp(newCommand->commandName,"mkdir")==0)||
+    (strcmp(newCommand->commandName,"clear")==0)||
     (strcmp(newCommand->commandName,"touch")==0)||
     (strcmp(newCommand->commandName,"rmdir")==0)||
     (strcmp(newCommand->commandName,"rm")==0)||
-    (strcmp(newCommand->commandName,"tree")==0)
+    (strcmp(newCommand->commandName,"tree")==0)||
+    (strcmp(newCommand->commandName,"snailHelp")==0)||
+    (strcmp(newCommand->commandName,"reloadConfig")==0)
     ){
         return 1;
     }
@@ -177,6 +182,12 @@ executorResult executeCommand(Command* newCommand){
         else if (strcmp(newCommand->commandName, "tree") == 0) {
             result = fileTreeCommand(newCommand);
         }
+        else if(strcmp(newCommand->commandName, "snailHelp") == 0){
+            result = snailHelpCommand(newCommand);
+        }
+        else if(strcmp(newCommand->commandName, "reloadConfig") == 0){
+            result = reloadConfigCommand(newCommand);
+        }
         // else if (strcmp(newCommand->commandName, "dumplist") == 0) {
         //     applyRedirection(newCommand,result);
         //     result = dumpList(newCommand);
@@ -238,6 +249,12 @@ executorResult executeBuiltIn(Command *cmd){
     }
     else if(strcmp(cmd->commandName, "tree") == 0){
         result = fileTreeCommand(cmd);
+    }
+    else if(strcmp(cmd->commandName, "snailHelp") == 0){
+        result = snailHelpCommand(cmd);
+    }
+    else if(strcmp(cmd->commandName, "reloadConfig") == 0){
+        result = reloadConfigCommand(cmd);
     }
     else{
         result.shouldExit = 0;

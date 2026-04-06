@@ -1,6 +1,14 @@
 # Ignore history file
 history.txt
 
-# Ignore Windows executable
+# Ignore built binary and Python cache
 snail
+__pycache__/
+*.pyc
+
 .bench_throughput
+report_cocomo_fpa.tex
+report_halstead_rm.tex
+report_progress.tex
+report_throughput.tex
+snail_metrics_report.tex
