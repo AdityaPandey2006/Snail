@@ -15,25 +15,15 @@ executorResult externalCommand(Command* newCommand){
     executorResult result;
     int pid=fork();
     //fork returns 0 for the child program
-
     
     int status;
     
     if(pid==0){
-        if(newCommand->outputFile){
-            int fileDescriptor;
-            if(!(newCommand->append)){
-                fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_TRUNC,0644);
-            }
-            else{
-                fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_APPEND,0644);
-            }
-            if(fileDescriptor<0){
-                printf("Redirection Failure");
-                exit(1);
-            }
-            dup2(fileDescriptor,STDOUT_FILENO);
-            close(fileDescriptor);//this does not close the outputFile, it only terminates the link between the file descriptor and STDOUT_FILENO
+        if(setupInputRedirection(newCommand) != 0){
+            exit(1);
+        }
+        if(setupOutputRedirection(newCommand) != 0){
+            exit(1);
         }
         execvp(newCommand->arguments[0],newCommand->arguments);
         //on success, execvp does not return to the calling process

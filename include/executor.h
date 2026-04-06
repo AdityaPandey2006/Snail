@@ -13,5 +13,7 @@ typedef struct{
 
 executorResult executeCommand(Command* newCommand);
 executorResult executePipes(Pipeline* newPipe);
+int setupInputRedirection(Command* newCommand);
+int setupOutputRedirection(Command* newCommand);
 
 #endif

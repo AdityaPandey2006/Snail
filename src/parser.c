@@ -3,18 +3,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 void freeCommand(Command *cmd) {
-    if (cmd==NULL||cmd->arguments==NULL){
+    if (cmd==NULL){
         return;
     }
-    for (int i=0;i<cmd->argCount;i++) {
-        free(cmd->arguments[i]);
+    if(cmd->arguments != NULL){
+        for (int i=0;i<cmd->argCount;i++) {
+            free(cmd->arguments[i]);
+        }
+        free(cmd->arguments);
     }
-    free(cmd->arguments);
+    if(cmd->inputFile){
+        free(cmd->inputFile);
+    }
     if(cmd->outputFile){
         free(cmd->outputFile);
     }
     cmd->commandName = NULL;
     cmd->arguments = NULL;
+    cmd->inputFile = NULL;
+    cmd->outputFile = NULL;
     cmd->argCount = 0;
 }
 
@@ -102,6 +109,7 @@ Pipeline parsePipes(char* input){
 Command parseCommand(char* input){
     char delimiters[]=" \r\t\n"; 
     Command newCommand={0};
+    newCommand.inputFile=NULL;
     newCommand.outputFile=NULL;
     // char delimiters[]=" ";
     int capacity=8;
@@ -114,6 +122,7 @@ Command parseCommand(char* input){
         emptyCmd.commandName = NULL;
         emptyCmd.arguments = NULL;
         emptyCmd.argCount = 0;
+        emptyCmd.inputFile=NULL;
         emptyCmd.outputFile=NULL;
         emptyCmd.append=0;
         return emptyCmd;
@@ -126,6 +135,7 @@ Command parseCommand(char* input){
         emptyCmd.commandName = NULL;
         emptyCmd.arguments = NULL;
         emptyCmd.argCount = 0;
+        emptyCmd.inputFile=NULL;
         emptyCmd.outputFile=NULL;
         emptyCmd.append=0;
         return emptyCmd;
@@ -148,30 +158,73 @@ Command parseCommand(char* input){
                 errorCmd.commandName = NULL;
                 errorCmd.arguments = NULL;
                 errorCmd.argCount = 0;
+                errorCmd.inputFile = NULL;
+                errorCmd.outputFile = NULL;
+                errorCmd.append = 0;
                 return errorCmd;
             }
         }
-        if(strcmp(token,">")==0){
+        if(strcmp(token,"<")==0){
+            if(newCommand.inputFile != NULL){
+                for(int j = 0; j < argCount; j++){
+                    free(arguments[j]);
+                }
+                free(arguments);
+                free(newCommand.outputFile);
+                free(newCommand.inputFile);
+                printf("multiple input redirections are not allowed\n");
+                Command errorCmd = {0};
+                return errorCmd;
+            }
+
+            token = strtok_r(NULL,delimiters,&saveptr);
+            if(token == NULL || strcmp(token, "<") == 0 || strcmp(token, ">") == 0 || strcmp(token, ">>") == 0){
+                for(int j = 0; j < argCount; j++){
+                    free(arguments[j]);
+                }
+                free(arguments);
+                free(newCommand.outputFile);
+                printf("no arguments provided after the < arrow");
+                Command emptyCmd = {0};
+                return emptyCmd;
+            }
+
+            newCommand.inputFile = malloc(strlen(token) + 1);
+            if(newCommand.inputFile == NULL){
+                for(int j = 0; j < argCount; j++){
+                    free(arguments[j]);
+                }
+                free(arguments);
+                free(newCommand.outputFile);
+                Command errorCmd = {0};
+                return errorCmd;
+            }
+
+            strcpy(newCommand.inputFile, token);
+            token = strtok_r(NULL,delimiters,&saveptr);
+            continue;
+        }
+        else if(strcmp(token,">")==0){
             if(newCommand.outputFile != NULL){
                 for(int j = 0; j < argCount; j++){
                     free(arguments[j]);
                 }
                 free(arguments);
+                free(newCommand.inputFile);
                 printf("multiple output redirections are not allowed\n");
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
+                Command errorCmd = {0};
                 return errorCmd;
             }
 
             token = strtok_r(NULL,delimiters,&saveptr);
-            if(token == NULL){
+            if(token == NULL || strcmp(token, "<") == 0 || strcmp(token, ">") == 0 || strcmp(token, ">>") == 0){
+                for(int j = 0; j < argCount; j++){
+                    free(arguments[j]);
+                }
                 free(arguments);
+                free(newCommand.inputFile);
                 printf("no arguments provided after the > arrow");
-                Command emptyCmd;
-                emptyCmd.commandName = NULL;
-                emptyCmd.arguments = NULL;
-                emptyCmd.argCount = 0;
-                emptyCmd.outputFile = NULL;
-                emptyCmd.append = 0;
+                Command emptyCmd = {0};
                 return emptyCmd;
             }
 
@@ -181,27 +234,16 @@ Command parseCommand(char* input){
                     free(arguments[j]);
                 }
                 free(arguments);
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
+                free(newCommand.inputFile);
+                Command errorCmd = {0};
                 return errorCmd;
             }
 
             strcpy(newCommand.outputFile, token);
-            arguments[argCount] = NULL;
             append = 0;
 
             token = strtok_r(NULL,delimiters,&saveptr);
-            if(token != NULL){
-                for(int j = 0; j < argCount; j++){
-                    free(arguments[j]);
-                }
-                free(arguments);
-                free(newCommand.outputFile);
-                printf("unexpected token after output redirection\n");
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
-                return errorCmd;
-            }
-
-            break;
+            continue;
         }
         else if(strcmp(token,">>")==0){
             if(newCommand.outputFile != NULL){
@@ -209,21 +251,21 @@ Command parseCommand(char* input){
                     free(arguments[j]);
                 }
                 free(arguments);
+                free(newCommand.inputFile);
                 printf("multiple output redirections are not allowed\n");
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
+                Command errorCmd = {0};
                 return errorCmd;
             }
 
             token = strtok_r(NULL,delimiters,&saveptr);
-            if(token == NULL){
+            if(token == NULL || strcmp(token, "<") == 0 || strcmp(token, ">") == 0 || strcmp(token, ">>") == 0){
+                for(int j = 0; j < argCount; j++){
+                    free(arguments[j]);
+                }
                 free(arguments);
+                free(newCommand.inputFile);
                 printf("no arguments provided after the >> arrow");
-                Command emptyCmd;
-                emptyCmd.commandName = NULL;
-                emptyCmd.arguments = NULL;
-                emptyCmd.argCount = 0;
-                emptyCmd.outputFile = NULL;
-                emptyCmd.append = 0;
+                Command emptyCmd = {0};
                 return emptyCmd;
             }
 
@@ -233,27 +275,16 @@ Command parseCommand(char* input){
                     free(arguments[j]);
                 }
                 free(arguments);
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
+                free(newCommand.inputFile);
+                Command errorCmd = {0};
                 return errorCmd;
             }
 
             strcpy(newCommand.outputFile, token);
-            arguments[argCount] = NULL;
             append = 1;
 
             token = strtok_r(NULL,delimiters,&saveptr);
-            if(token != NULL){
-                for(int j = 0; j < argCount; j++){
-                    free(arguments[j]);
-                }
-                free(arguments);
-                free(newCommand.outputFile);
-                printf("unexpected token after output redirection\n");
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
-                return errorCmd;
-            }
-
-            break;
+            continue;
         }
 
         else{
@@ -263,7 +294,9 @@ Command parseCommand(char* input){
                     free(arguments[j]);
                 }
                 free(arguments);
-                Command errorCmd = {NULL, NULL, 0, NULL, 0};
+                free(newCommand.inputFile);
+                free(newCommand.outputFile);
+                Command errorCmd = {0};
                 return errorCmd;
             }
             strcpy(arguments[argCount],token);

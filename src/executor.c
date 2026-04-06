@@ -17,52 +17,80 @@
 #include <string.h>
 #include "commandHistory.h"
 #include<sys/wait.h>
-#include<unistd.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-
-executorResult applyRedirection(int *savedSTDOUT,Command* newCommand){
-    executorResult result;
-    if(newCommand->outputFile){
-        *savedSTDOUT=dup(STDOUT_FILENO);
-        if(*savedSTDOUT < 0){
-            perror("dup failed");
-            result.statusCode=1;
-            result.shouldExit=0;
-            return result;
-        }
-        int fileDescriptor;
-        if(!(newCommand->append)){
-            fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_TRUNC,0644);
-        }
-        else{
-            fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_APPEND,0644);
-        }
-        if(fileDescriptor<0){
-            printf("Redirection Failure");
-            
-            perror("open");
-            dup2(*savedSTDOUT, STDOUT_FILENO);
-            close(*savedSTDOUT);
-            *savedSTDOUT=-1;
-            result.statusCode=1;
-            result.shouldExit=0;
-            return result;
-        }
-        dup2(fileDescriptor,STDOUT_FILENO);
-        close(fileDescriptor);//this does not close the outputFile, it only terminates the link between the file descriptor and STDOUT_FILENO
+int setupInputRedirection(Command* newCommand){
+    if(newCommand == NULL || newCommand->inputFile == NULL){
+        return 0;
     }
-    result.statusCode=0;
-    result.shouldExit=0;
-    return result;
+
+    int fileDescriptor = open(newCommand->inputFile, O_RDONLY);
+    if(fileDescriptor < 0){
+        perror("open failed");
+        return 1;
+    }
+
+    if(dup2(fileDescriptor, STDIN_FILENO) < 0){
+        perror("dup2 failed");
+        close(fileDescriptor);
+        return 1;
+    }
+
+    close(fileDescriptor);
+    return 0;
 }
 
+int setupOutputRedirection(Command* newCommand){
+    if(newCommand == NULL || newCommand->outputFile == NULL){
+        return 0;
+    }
+
+    int flags = O_WRONLY | O_CREAT;
+    if(newCommand->append){
+        flags |= O_APPEND;
+    }
+    else{
+        flags |= O_TRUNC;
+    }
+
+    int fileDescriptor = open(newCommand->outputFile, flags, 0644);
+    if(fileDescriptor < 0){
+        perror("open failed");
+        return 1;
+    }
+
+    if(dup2(fileDescriptor, STDOUT_FILENO) < 0){
+        perror("dup2 failed");
+        close(fileDescriptor);
+        return 1;
+    }
+
+    close(fileDescriptor);
+    return 0;
+}
+
+int isBuiltIn(Command* newCommand){
+    if(strcmp(newCommand->commandName,"cd")==0||
+    (strcmp(newCommand->commandName,"mv")==0)||
+    (strcmp(newCommand->commandName,"ls")==0)||
+    (strcmp(newCommand->commandName,"exit")==0)||
+    (strcmp(newCommand->commandName,"mkdir")==0)||
+    (strcmp(newCommand->commandName,"touch")==0)||
+    (strcmp(newCommand->commandName,"rmdir")==0)||
+    (strcmp(newCommand->commandName,"rm")==0)||
+    (strcmp(newCommand->commandName,"tree")==0)
+    ){
+        return 1;
+    }
+    return 0;
+}
 
 
 executorResult executeCommand(Command* newCommand){
     executorResult result;
     newEntry(newCommand);
+    int savedSTDIN=-1;
     int savedSTDOUT=-1;
     if(newCommand->argCount==0){
         printf("Nothing to Execute");
@@ -70,84 +98,108 @@ executorResult executeCommand(Command* newCommand){
         result.statusCode=0;
         return result;
     }
-    if(strcmp(newCommand->commandName,"cd")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+    if(isBuiltIn(newCommand)){
+        if(newCommand->inputFile){
+            savedSTDIN = dup(STDIN_FILENO);
+            if(savedSTDIN < 0){
+                perror("dup failed");
+                result.shouldExit = 0;
+                result.statusCode = 1;
+                return result;
+            }
+
+            if(setupInputRedirection(newCommand) != 0){
+                close(savedSTDIN);
+                result.shouldExit = 0;
+                result.statusCode = 1;
+                return result;
+            }
+        }
+        if(newCommand->outputFile){
+            savedSTDOUT = dup(STDOUT_FILENO);
+            if(savedSTDOUT < 0){
+                perror("dup failed");
+                if(savedSTDIN != -1){
+                    dup2(savedSTDIN, STDIN_FILENO);
+                    close(savedSTDIN);
+                }
+                result.shouldExit = 0;
+                result.statusCode = 1;
+                return result;
+            }
+
+            if(setupOutputRedirection(newCommand) != 0){
+                close(savedSTDOUT);
+                if(savedSTDIN != -1){
+                    dup2(savedSTDIN, STDIN_FILENO);
+                    close(savedSTDIN);
+                }
+                result.shouldExit = 0;
+                result.statusCode = 1;
+                return result;
+            }
+        }
+        if(strcmp(newCommand->commandName,"cd")==0){
             result=cdCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"mv")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"mv")==0){
             result=mvCommand(newCommand);
+            //todo: have to make the return type as the executorResult
         }
-        //todo: have to make the return type as the executorResult
-    }
-    else if(strcmp(newCommand->commandName,"ls")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
-            result=lsCommand(newCommand);//todo: have to make the return type as the executorResult
+        else if(strcmp(newCommand->commandName,"ls")==0){
+            result=lsCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"exit")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"exit")==0){
             result=exitCommand();
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"mkdir")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"mkdir")==0){
             result =mkdirCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"clear")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"clear")==0){
             result=clearCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"touch")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"touch")==0){
             result=touchCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"rmdir")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"rmdir")==0){
             result=rmdirCommand(newCommand);
+            
         }
-        
-    }
-    else if(strcmp(newCommand->commandName,"rm")==0){
-        result=applyRedirection(&savedSTDOUT,newCommand);
-        if(result.statusCode==0){
+        else if(strcmp(newCommand->commandName,"rm")==0){
             result=rmCommand(newCommand);
         }
-    }
-    else if (strcmp(newCommand->commandName, "tree") == 0) {
-        result = applyRedirection(&savedSTDOUT, newCommand);
-        if(result.statusCode == 0){
+        else if (strcmp(newCommand->commandName, "tree") == 0) {
             result = fileTreeCommand(newCommand);
         }
+        // else if (strcmp(newCommand->commandName, "dumplist") == 0) {
+        //     applyRedirection(newCommand,result);
+        //     result = dumpList(newCommand);
+        // }
     }
-    // else if (strcmp(newCommand->commandName, "dumplist") == 0) {
-    //     applyRedirection(newCommand,result);
-    //     result = dumpList(newCommand);
-    // }
     else{
         result=externalCommand(newCommand);
         
     }
+    if(newCommand->inputFile&&savedSTDIN != -1){
+        if(dup2(savedSTDIN,STDIN_FILENO) < 0){
+            perror("dup2 failed");
+            result.shouldExit = 0;
+            result.statusCode = 1;
+        }
+        close(savedSTDIN);
+    }
     if(newCommand->outputFile&&savedSTDOUT != -1){
-        dup2(savedSTDOUT,STDOUT_FILENO);
+        if(dup2(savedSTDOUT,STDOUT_FILENO) < 0){
+            perror("dup2 failed");
+            result.shouldExit = 0;
+            result.statusCode = 1;
+        }
         close(savedSTDOUT);
     }
     return result;
@@ -233,6 +285,12 @@ executorResult executePipes(Pipeline* newPipe){
             }
             //execute command
             Command *cmd=&newPipe->command[i];
+            if(setupInputRedirection(cmd) != 0){
+                exit(1);
+            }
+            if(setupOutputRedirection(cmd) != 0){
+                exit(1);
+            }
             executorResult temp=executeBuiltIn(cmd);
             if(temp.statusCode!=-1){
                 exit(temp.statusCode);
