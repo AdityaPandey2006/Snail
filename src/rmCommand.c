@@ -55,15 +55,17 @@ int cmp(const void *a,const void *b){
     return ((fileEntry*)b)->score > ((fileEntry*)a)->score ? 1 : -1;
 }
 
-void redraw(fileEntry *entries, int count, int cursor) {
+void redraw(fileEntry *entries, int count, int cursor, int firstDraw) {
     int show = count < 10 ? count : 10;
 
-    // move cursor UP to overwrite previous UI
-    printf("\033[%dA", show + 3);
+    if(!firstDraw){
+        // Move back to the top of the UI block before repainting it.
+        printf("\033[%dA", show + 2);
+        printf("\r");
+        printf("\033[J");
+    }
 
-    printf("\033[J"); // clear below
-
-    printf("Use UP/DOWN to navigate, SPACE to select, ENTER to confirm\n\n");
+    printf("Use UP/DOWN to navigate, SPACE to select, ENTER to confirm, Q/X/Ctrl+C to cancel\n\n");
 
     for (int i = 0; i < show; i++) {
         if (i == cursor) printf("\033[7m");
@@ -151,12 +153,11 @@ executorResult interactiveRemoval(char*dirPath){
     //now we need to control which one to select and whcib to not by up/down space and enter...
     int show=count<10? count:10;
     int cursor=0;
+    int firstDraw=1;
     struct termios old;
 
-    int move= count < 10 ? count : 10;
-    printf("\n");  // move below command
-    // reserve space so moving up works
-    for (int i = 0; i < move + 7; i++) printf("\n");
+    // Reserve exactly the number of lines the UI will occupy.
+    for (int i = 0; i < show + 2; i++) printf("\n");
 
     fflush(stdout);
     tcflush(STDIN_FILENO, TCIFLUSH);
@@ -165,13 +166,20 @@ executorResult interactiveRemoval(char*dirPath){
     enableRawMode(&old);
 
     while(true){
-        redraw(entries,count,cursor); 
+        redraw(entries,count,cursor,firstDraw);
+        firstDraw=0;
         char c=getchar();
-        if(c=='x' || c=='X'){
+        if(c=='q' || c=='Q' || c=='x' || c=='X' || c==3){
             disableRawMode(&old);
+            printf("\nInteractive removal cancelled.\n");
+            for(int i=0;i<count;i++){
+                free(entries[i].name);
+                free(entries[i].fullPath);
+            }
+            free(entries);
             executorResult result;
             result.shouldExit=0;
-            result.statusCode=1;
+            result.statusCode=0;
             return result;
         }
         if(c=='\033'){
@@ -271,5 +279,3 @@ executorResult rmCommand(Command* newCommand){
     //can have multiple error status codes instead of it being 1 for all kinds of rm errors
     return result;
 }
-
-//will be implementing an interactive deletion option later
