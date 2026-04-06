@@ -1,12 +1,13 @@
-// #ifndef FILEDUMP_H
-// #define FILEDUMP_H
+#ifndef FILEDUMP_H
+#define FILEDUMP_H
+#include "parser.h"
 
-
-// int makeDumpFolder();
-// int cleanDump();
-// int fileRestore();
-// int sendToDump(char* entryPath);// both files and folders can be sent to the dump. Calling files and folders together as entries
-// #endif
+int makeDumpFolder(void);
+int cleanDump(void);
+int fileRestore(Command* newCmd);
+int fileRestoreHelper(char* entryPath);
+int sendToDump(char* entryPath);// both files and folders can be sent to the dump. Calling files and folders together as entries
+#endif
 
 
 

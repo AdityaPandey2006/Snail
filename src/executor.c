@@ -8,21 +8,62 @@
 #include "clearCommand.h"
 #include "externalCommand.h"
 #include "lsCommand.h"
-#include "mvCommand.h"
-#include "touchCommand.h"
 #include "rmdirCommand.h"
 #include "rmCommand.h"
 #include "treeCommand.h"
 #include "dumpList.h"
+#include "touchCommand.h"
 #include <stdio.h>
 #include <string.h>
 #include "commandHistory.h"
 #include<sys/wait.h>
 #include<unistd.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+
+executorResult applyRedirection(int *savedSTDOUT,Command* newCommand){
+    executorResult result;
+    if(newCommand->outputFile){
+        *savedSTDOUT=dup(STDOUT_FILENO);
+        if(*savedSTDOUT < 0){
+            perror("dup failed");
+            result.statusCode=1;
+            result.shouldExit=0;
+            return result;
+        }
+        int fileDescriptor;
+        if(!(newCommand->append)){
+            fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_TRUNC,0644);
+        }
+        else{
+            fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_APPEND,0644);
+        }
+        if(fileDescriptor<0){
+            printf("Redirection Failure");
+            
+            perror("open");
+            dup2(*savedSTDOUT, STDOUT_FILENO);
+            close(*savedSTDOUT);
+            *savedSTDOUT=-1;
+            result.statusCode=1;
+            result.shouldExit=0;
+            return result;
+        }
+        dup2(fileDescriptor,STDOUT_FILENO);
+        close(fileDescriptor);//this does not close the outputFile, it only terminates the link between the file descriptor and STDOUT_FILENO
+    }
+    result.statusCode=0;
+    result.shouldExit=0;
+    return result;
+}
+
+
 
 executorResult executeCommand(Command* newCommand){
     executorResult result;
     newEntry(newCommand);
+    int savedSTDOUT=-1;
     if(newCommand->argCount==0){
         printf("Nothing to Execute");
         result.shouldExit=0;
@@ -30,43 +71,84 @@ executorResult executeCommand(Command* newCommand){
         return result;
     }
     if(strcmp(newCommand->commandName,"cd")==0){
-        result=cdCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=cdCommand(newCommand);
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"mv")==0){
-        result=mvCommand(newCommand);//todo: have to make the return type as the executorResult
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=mvCommand(newCommand);
+        }
+        //todo: have to make the return type as the executorResult
     }
     else if(strcmp(newCommand->commandName,"ls")==0){
-        result=lsCommand(newCommand);
-    }
-    else if(strcmp(newCommand->commandName,"mv")==0){
-        result=mvCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=lsCommand(newCommand);//todo: have to make the return type as the executorResult
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"exit")==0){
-        result=exitCommand();
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=exitCommand();
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"mkdir")==0){
-        result =mkdirCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result =mkdirCommand(newCommand);
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"clear")==0){
-        result=clearCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=clearCommand(newCommand);
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"touch")==0){
-        result=touchCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=touchCommand(newCommand);
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"rmdir")==0){
-        result=rmdirCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=rmdirCommand(newCommand);
+        }
+        
     }
     else if(strcmp(newCommand->commandName,"rm")==0){
-        result=rmCommand(newCommand);
+        result=applyRedirection(&savedSTDOUT,newCommand);
+        if(result.statusCode==0){
+            result=rmCommand(newCommand);
+        }
     }
     else if (strcmp(newCommand->commandName, "tree") == 0) {
-        result=fileTreeCommand(newCommand);
+        result = applyRedirection(&savedSTDOUT, newCommand);
+        if(result.statusCode == 0){
+            result = fileTreeCommand(newCommand);
+        }
     }
-    else if (strcmp(newCommand->commandName, "dumplist") == 0) {
-        //result = dumpList(newCommand);
-    }
+    // else if (strcmp(newCommand->commandName, "dumplist") == 0) {
+    //     applyRedirection(newCommand,result);
+    //     result = dumpList(newCommand);
+    // }
     else{
         result=externalCommand(newCommand);
+        
+    }
+    if(newCommand->outputFile&&savedSTDOUT != -1){
+        dup2(savedSTDOUT,STDOUT_FILENO);
+        close(savedSTDOUT);
     }
     return result;
 

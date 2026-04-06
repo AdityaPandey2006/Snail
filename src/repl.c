@@ -235,10 +235,10 @@ int readInput(){
 
 
 void replStart(){
-    // int dumpCleanSuccess=cleanDump();
-    // if(!dumpCleanSuccess){
-    //     printf("Warning: Dump cleanup error\n");
-    // }
+    int dumpCleanSuccess=cleanDump();
+    if(!dumpCleanSuccess){
+        printf("Warning: Dump cleanup error\n");
+    }
     unloadHistory();//to load the data in an array...
     atexit(loadHistory); //auto save the data
     snailPrinter();

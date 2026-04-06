@@ -8,6 +8,7 @@
 #include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 
 executorResult externalCommand(Command* newCommand){
@@ -19,6 +20,21 @@ executorResult externalCommand(Command* newCommand){
     int status;
     
     if(pid==0){
+        if(newCommand->outputFile){
+            int fileDescriptor;
+            if(!(newCommand->append)){
+                fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_TRUNC,0644);
+            }
+            else{
+                fileDescriptor=open(newCommand->outputFile,O_WRONLY|O_CREAT|O_APPEND,0644);
+            }
+            if(fileDescriptor<0){
+                printf("Redirection Failure");
+                exit(1);
+            }
+            dup2(fileDescriptor,STDOUT_FILENO);
+            close(fileDescriptor);//this does not close the outputFile, it only terminates the link between the file descriptor and STDOUT_FILENO
+        }
         execvp(newCommand->arguments[0],newCommand->arguments);
         //on success, execvp does not return to the calling process
         //reraching here means execvp has failed
@@ -33,7 +49,7 @@ executorResult externalCommand(Command* newCommand){
         perror("External command execution failed, could not fork");
         result.statusCode = 1;
         result.shouldExit = 0;
-    }
+    }   
     else{
         //fork returns pid of child process for the parent program
         waitpid(pid,&status,0);

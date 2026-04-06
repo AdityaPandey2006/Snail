@@ -6,7 +6,8 @@
 void printPrompt(){
     char workingDirectory[PATH_MAX];
     getcwd(workingDirectory,PATH_MAX);//PATH_MAX is maximum size file path string 
-    printf("%s > ",workingDirectory);
+    printf("%s>",workingDirectory);
     // printf("snail>");
-    fflush(stderr);
+    // fflush(stderr);
+    fflush(stdout);
 }

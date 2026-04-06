@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include "rmCommand.h"
+#include "fileDump.h"
 #include<unistd.h>
 #include<dirent.h>
 #include<stdbool.h>
@@ -22,12 +23,11 @@ typedef struct {
 } fileEntry;
 
 
-//for now only implementing file removal using rm with -f as an additional command in it for force delete of a file
+// rm sends entries to the dump instead of deleting them permanently.
 
-executorResult fileRemoval(const char *filePath){
+executorResult fileRemoval(char *filePath){
     executorResult result;
-    //simply use remove from stdio if not force remove it acts like mlinux rm anyway
-    if(remove(filePath)==0){
+    if(sendToDump(filePath) == 1){
         result.shouldExit=0;
         result.statusCode=0;
     }
@@ -102,9 +102,7 @@ executorResult interactiveRemoval(char*dirPath){
 
     while((entry=readdir(dir))!=NULL){
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-            continue;
-        if (entry->d_type == DT_DIR)
-            continue;  // skip subdirectories        
+            continue;        
         //now get file details and get score   
 
         char *fileName=entry->d_name;
@@ -113,6 +111,18 @@ executorResult interactiveRemoval(char*dirPath){
         //appended fileName on the directoryPath to get the metadata
 
         struct stat st;
+        if(stat(filePath, &st) != 0){
+            free(filePath);
+            continue;
+        }
+
+        if(S_ISDIR(st.st_mode)){
+            free(filePath);
+            continue;
+        }
+
+
+        // struct stat st;
         stat(filePath, &st);
         time_t now=time(NULL);
         double age=difftime(now,st.st_mtime)/86400; //scaled in terms of days rather than seconds to save computation
