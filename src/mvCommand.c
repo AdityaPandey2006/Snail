@@ -13,6 +13,12 @@
 #include <sys/sendfile.h>
 #include "fileDump.h"
 #include <limits.h>
+#ifndef PATH_MAX
+#include <linux/limits.h>
+#endif
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #define STAT_FUNC stat
 #define STAT_STRUCT struct stat
