@@ -9,7 +9,7 @@ executorResult mkdirCommand(Command* newcommand){
     result.shouldExit=0;
 
     if (newcommand->argCount<2){
-        fprintf(stderr,"mkdir:missing operand");
+        fprintf(stderr,"mkdir: missing operand\n");
         result.statusCode=1;
         return result;
     }
