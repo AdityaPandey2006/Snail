@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <linux/limits.h>
 #define COMMANDSIZE 256
@@ -352,7 +353,17 @@ int readInput(){
     int historyIndex = currentSize;
     while(1){
         char c;
-        if(read(STDIN_FILENO, &c, 1) <= 0){
+        ssize_t readResult = read(STDIN_FILENO, &c, 1);
+        if(readResult <= 0){
+            if(readResult < 0 && errno == EINTR){
+                input[0] = '\0';
+                len = 0;
+                cursorPos = 0;
+                historyIndex = currentSize;
+                refreshPromptTimestamp();
+                redrawInputLine(input, len, cursorPos);
+                continue;
+            }
             disableRawMode(&old);
             return 1;
         }
