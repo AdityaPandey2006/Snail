@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <string.h>
 #include "prompt.h"
@@ -18,6 +19,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include <linux/limits.h>
 #define COMMANDSIZE 256
 
 //enable raw mode and disabe raw mode helpers important to read dynamically

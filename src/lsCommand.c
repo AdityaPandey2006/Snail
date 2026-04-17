@@ -15,7 +15,7 @@
 #include <sys/ioctl.h>
 #include"executor.h"
 #include "config.h"
-
+#include <linux/limits.h>
 static int isDotEntry(const char *name){
     return strcmp(name, ".") == 0 || strcmp(name, "..") == 0;
 }

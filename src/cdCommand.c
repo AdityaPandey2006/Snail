@@ -6,7 +6,7 @@
 #include <string.h>
 #include "parser.h"
 #include "executor.h"
-
+#include <linux/limits.h>
 static const char* resolveCdPath(const char *inputPath, char *expandedPath, size_t expandedSize){
     if(inputPath == NULL){
         return NULL;

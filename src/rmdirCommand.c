@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <string.h>
-
+#include <limits.h>
 static int isDirectoryPath(const char *path){
     struct stat st;
     if(path == NULL){
