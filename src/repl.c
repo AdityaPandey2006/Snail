@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #define COMMANDSIZE 256
 
@@ -114,9 +115,24 @@ static void redrawInputLine(const char *input, int len, int cursorPos){
     fflush(stdout);
 }
 
-static void trimToCommonPrefix(char *prefix, const char *candidate){
+static int startsWithIgnoreCase(const char *text, const char *prefix){
     size_t i = 0;
-    while(prefix[i] != '\0' && candidate[i] != '\0' && prefix[i] == candidate[i]){
+    while(prefix[i] != '\0'){
+        if(text[i] == '\0'){
+            return 0;
+        }
+        if(tolower((unsigned char)text[i]) != tolower((unsigned char)prefix[i])){
+            return 0;
+        }
+        i++;
+    }
+    return 1;
+}
+
+static void trimToCommonPrefixIgnoreCase(char *prefix, const char *candidate){
+    size_t i = 0;
+    while(prefix[i] != '\0' && candidate[i] != '\0' &&
+          tolower((unsigned char)prefix[i]) == tolower((unsigned char)candidate[i])){
         i++;
     }
     prefix[i] = '\0';
@@ -257,7 +273,7 @@ static void handleTabCompletion(char *input, int *len, int *cursorPos){
         if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
             continue;
         }
-        if(strncmp(entry->d_name, namePrefix, prefixLen) != 0){
+        if(!startsWithIgnoreCase(entry->d_name, namePrefix)){
             continue;
         }
 
@@ -266,7 +282,7 @@ static void handleTabCompletion(char *input, int *len, int *cursorPos){
             snprintf(commonPrefix, sizeof(commonPrefix), "%s", entry->d_name);
         }
         else{
-            trimToCommonPrefix(commonPrefix, entry->d_name);
+            trimToCommonPrefixIgnoreCase(commonPrefix, entry->d_name);
         }
 
         if(listed < (int)(sizeof(matchList) / sizeof(matchList[0]))){

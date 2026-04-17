@@ -15,7 +15,7 @@ executorResult touchCommand(Command* newCommand) {
         result.statusCode = 1;
         return result;
     }
-
+    
     for (int i = 1; i < newCommand->argCount; i++) {
 
         char *filename = newCommand->arguments[i];
