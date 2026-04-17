@@ -143,6 +143,7 @@ int cleanDump(){
 //removed / from the end
 
     int success=1;
+    int removedCount = 0;
     if((access(dumpPath,F_OK)!=0)||(access(dumpFilesPath,F_OK)!=0)||(access(dumpInfoPath,F_OK)!=0)){
         int makeDumpSuccess=makeDumpFolder();
         if(!makeDumpSuccess){
@@ -199,23 +200,26 @@ int cleanDump(){
 
         int maxLineLength=256;
         char buffer[maxLineLength];
-        int dFound=0;
+        int expectDeletionDate=0;
+        int deletionDateCaptured=0;
         char deletionTimeString[25]={0};
         while(fgets(buffer,maxLineLength,entryInfoFilePointer)!=NULL){
-            if(dFound){
+            if(expectDeletionDate){
                 int newLinePos=strcspn(buffer,"\n");
                 buffer[newLinePos]='\0';
                 strcpy(deletionTimeString,buffer);
+                expectDeletionDate=0;
+                deletionDateCaptured=1;
             }
             else{
                 if(strncmp(buffer,"DeletionDate:",13)==0){
-                    dFound=1;
+                    expectDeletionDate=1;
                 }
             }
         }
         fclose(entryInfoFilePointer);
         entryInfoFilePointer = NULL;
-        if(!dFound){
+        if(!deletionDateCaptured){
             continue;
         }
         char* format = "%Y-%m-%dT%H:%M:%S";
@@ -229,7 +233,7 @@ int cleanDump(){
         }
         time_t currentTime;
         time(&currentTime);  
-                if(currentTime - deletionTime > (48 * 60 * 60)){
+                if(currentTime - deletionTime > (60)){
             struct stat entryStat;
             if(lstat(entryFilePath, &entryStat) != 0){
                 perror("lstat failed");
@@ -251,12 +255,16 @@ int cleanDump(){
 
             if(remove(entryInfoPath) != 0){
                 perror("remove failed");
+                continue;
             }
+            removedCount++;
         }
        
     }
     closedir(dumpFileDir);
     closedir(dumpInfoDir);
+
+    printf("Dump cleanup removed %d entr%s.\n", removedCount, removedCount == 1 ? "y" : "ies");
 
     return success;
 }

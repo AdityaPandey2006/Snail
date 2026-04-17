@@ -1,0 +1,400 @@
+{
+  "project": "Snail",
+  "purpose": "Demo checklist and Q&A prep for the Snail shell project.",
+  "important_notes": [
+    "The shell supports built-ins, external commands, pipelines, input redirection, output redirection, append redirection, config loading from ~/snailShellrc, startup commands, persistent command history, tab completion, and dump-based safe deletion.",
+    "Restore logic exists in src/fileDump.c as fileRestore/fileRestoreHelper, but it does not appear to be exposed as a built-in shell command in executor.c or snailHelp.c.",
+    "A dumpList command header/source exists, but it also does not appear to be exposed as a built-in command in executor.c.",
+    "The mv command uses custom syntax: mv -re <old> <new>, mv -over <src> <dest>, mv -shift <src> <dir>."
+  ],
+  "recommended_demo_order": [
+    "startup_and_shell_identity",
+    "snailHelp_command",
+    "basic_builtins",
+    "external_commands",
+    "io_redirection",
+    "pipelines",
+    "rm_rmdir_and_dump_workflow",
+    "snailrc_and_reloadConfig",
+    "history_and_line_editing",
+    "extra_polish_features",
+    "restore_story_and_current_limitation"
+  ],
+  "features": [
+    {
+      "id": "startup_and_shell_identity",
+      "title": "Startup behavior and shell identity",
+      "why_it_matters": "This is the fastest way to establish that Snail is a real custom shell with its own REPL, prompt, startup flow, config loading, and branding.",
+      "show_first": [
+        "Start Snail normally.",
+        "Point out the custom prompt and the ASCII snail art if enabled.",
+        "Mention that startup commands from ~/snailShellrc can run automatically.",
+        "If configured, mention dump cleanup and clear-screen-on-start happen automatically."
+      ],
+      "good_commands_to_show": [
+        "Run the shell and pause on first screen.",
+        "If startup commands exist in ~/snailShellrc, keep one simple command like echo Welcome to Snail."
+      ],
+      "edge_cases_or_questions": [
+        "If asked what happens on first run: Snail creates ~/snailShellrc from snail.conf or built-in defaults.",
+        "If asked what happens when config creation fails: the code falls back to in-memory defaults and prints a warning.",
+        "If asked whether dump cleanup is automatic: yes, if clean_dump_on_start is enabled."
+      ],
+      "implementation_refs": [
+        "src/repl.c",
+        "src/config.c"
+      ]
+    },
+    {
+      "id": "snailHelp_command",
+      "title": "snailHelp built-in command",
+      "why_it_matters": "This is the cleanest overview feature and also proves built-in command execution.",
+      "show_first": [
+        "Run snailHelp.",
+        "Scroll to built-in commands, shell syntax, rm options, config path, dump folder, and prompt/config options.",
+        "Then show that built-in output can also be redirected."
+      ],
+      "good_commands_to_show": [
+        "snailHelp",
+        "snailHelp > help.txt",
+        "cat help.txt"
+      ],
+      "edge_cases_or_questions": [
+        "If asked where config is loaded from: snailHelp prints the active path from getSnailConfigPath().",
+        "If asked whether built-ins support redirection: yes, executor.c saves and restores stdin/stdout around built-in execution."
+      ],
+      "implementation_refs": [
+        "src/snailHelp.c",
+        "src/executor.c"
+      ]
+    },
+    {
+      "id": "basic_builtins",
+      "title": "Built-in commands",
+      "why_it_matters": "These show that the shell does more than just forward commands to execvp.",
+      "show_first": [
+        "Use a short sequence such as pwd, mkdir, touch, ls, tree, cd, and clear.",
+        "Keep it in one temporary demo folder so the narrative stays clean."
+      ],
+      "good_commands_to_show": [
+        "mkdir demoDir",
+        "cd demoDir",
+        "touch file1.txt file2.txt",
+        "ls",
+        "ls -l",
+        "tree .",
+        "cd ..",
+        "clear"
+      ],
+      "edge_cases_or_questions": [
+        "cd with no argument goes to HOME.",
+        "cd supports ~ and ~/path expansion.",
+        "cd with too many arguments prints an error.",
+        "mkdir with no operand prints an error.",
+        "touch with no file operand prints an error.",
+        "tree with too many arguments prints an error.",
+        "clear with extra arguments prints an error."
+      ],
+      "implementation_refs": [
+        "src/cdCommand.c",
+        "src/mkdirCommand.c",
+        "src/touchCommand.c",
+        "src/lsCommand.c",
+        "src/treeCommand.c",
+        "src/clearCommand.c"
+      ]
+    },
+    {
+      "id": "mv_command",
+      "title": "Custom mv command behavior",
+      "why_it_matters": "This is one of the more custom parts of the shell and is easy for evaluators to ask about.",
+      "show_first": [
+        "Explain that Snail intentionally does not use standard mv syntax.",
+        "Show rename first because it is easiest to understand.",
+        "Then show move-to-directory or overwrite behavior."
+      ],
+      "good_commands_to_show": [
+        "touch old.txt another.txt",
+        "mv -re old.txt new.txt",
+        "mkdir destDir",
+        "mv -shift new.txt destDir",
+        "touch src.txt dest.txt",
+        "mv -over src.txt dest.txt"
+      ],
+      "edge_cases_or_questions": [
+        "If the option is missing or invalid, mv prints an error.",
+        "If the number of arguments is wrong, mv prints an error.",
+        "If overwrite or rename would replace an existing destination, the destination is first backed up to the dump.",
+        "If a move fails after backing up the destination, the code attempts rollback using restore helper logic.",
+        "Trying to rename over a directory is rejected."
+      ],
+      "implementation_refs": [
+        "src/mvCommand.c",
+        "src/fileDump.c"
+      ]
+    },
+    {
+      "id": "external_commands",
+      "title": "External command execution",
+      "why_it_matters": "This proves Snail can execute normal system programs and is not limited to built-ins.",
+      "show_first": [
+        "Run one very familiar command such as pwd or echo through the system.",
+        "Then run something that clearly is not a Snail built-in, such as wc, cat, or grep."
+      ],
+      "good_commands_to_show": [
+        "echo hello from external",
+        "pwd",
+        "wc -w help.txt"
+      ],
+      "edge_cases_or_questions": [
+        "If the command does not exist, execvp fails and the shell prints an error.",
+        "External commands also participate in pipelines and redirection."
+      ],
+      "implementation_refs": [
+        "src/executor.c",
+        "src/externalCommand.c"
+      ]
+    },
+    {
+      "id": "io_redirection",
+      "title": "Input and output redirection",
+      "why_it_matters": "This is a core shell capability and a common demo expectation.",
+      "show_first": [
+        "Show output redirection with a simple command.",
+        "Then show append redirection.",
+        "Then show input redirection."
+      ],
+      "good_commands_to_show": [
+        "echo first line > out.txt",
+        "echo second line >> out.txt",
+        "cat out.txt",
+        "wc -w < out.txt",
+        "snailHelp > help.txt"
+      ],
+      "edge_cases_or_questions": [
+        "Multiple output redirections in one command are rejected by the parser.",
+        "Multiple input redirections in one command are rejected by the parser.",
+        "Missing filename after <, >, or >> is rejected by the parser.",
+        "Built-ins also support redirection, not just external commands.",
+        "Output redirection uses truncate for > and append for >>."
+      ],
+      "implementation_refs": [
+        "src/parser.c",
+        "src/executor.c"
+      ]
+    },
+    {
+      "id": "pipelines",
+      "title": "Pipelines",
+      "why_it_matters": "Pipelines are one of the strongest proofs of shell-like behavior.",
+      "show_first": [
+        "Show a simple external-to-external pipeline first.",
+        "Then show a built-in participating in a pipeline."
+      ],
+      "good_commands_to_show": [
+        "echo hello world | wc -w",
+        "snailHelp | wc -l",
+        "ls | wc -l"
+      ],
+      "edge_cases_or_questions": [
+        "Invalid pipelines such as an empty stage are rejected.",
+        "Built-ins can run inside pipelines because executePipes uses executeBuiltIn in child processes.",
+        "Pipeline stages can still use input/output redirection because setupInputRedirection and setupOutputRedirection are called inside each child."
+      ],
+      "implementation_refs": [
+        "src/parser.c",
+        "src/executor.c"
+      ]
+    },
+    {
+      "id": "rm_rmdir_and_dump_workflow",
+      "title": "Safe deletion with rm, rmdir, and the dump",
+      "why_it_matters": "This is one of Snail's standout differentiators from a normal shell.",
+      "show_first": [
+        "Create a sample file and remove it with rm.",
+        "Immediately show that the file is gone from the working directory but present in ~/.snailDump/files with metadata in ~/.snailDump/info.",
+        "Then show directory handling with rm -r or rmdir."
+      ],
+      "good_commands_to_show": [
+        "touch victim.txt",
+        "rm victim.txt",
+        "ls",
+        "cd ~/.snailDump/files",
+        "ls",
+        "cd ~/.snailDump/info",
+        "ls",
+        "Navigate back manually to your demo folder",
+        "mkdir emptyDir",
+        "rmdir emptyDir",
+        "mkdir dir1",
+        "touch dir1/a",
+        "rm -r dir1"
+      ],
+      "edge_cases_or_questions": [
+        "rm without operands prints an error.",
+        "rm on a directory without -r is rejected.",
+        "rm -f ignores missing files if errno is ENOENT.",
+        "rm -i is a custom interactive mode for selecting files inside a directory; it cannot be combined with -r or -f.",
+        "rmdir only removes empty directories and sends them to the dump.",
+        "The dump cleanup policy removes entries older than 48 hours when enabled on startup.",
+        "The dump stores both file contents and metadata including original path, deletion date, and type.",
+        "Cross-device dump moves are not fully supported yet; the code prints a message if rename hits EXDEV."
+      ],
+      "implementation_refs": [
+        "src/rmCommand.c",
+        "src/rmdirCommand.c",
+        "src/fileDump.c"
+      ]
+    },
+    {
+      "id": "restore_story_and_current_limitation",
+      "title": "Restoration logic and current limitation",
+      "why_it_matters": "You specifically mentioned restoration, so it is best to present the exact state honestly.",
+      "show_first": [
+        "Explain that restoration logic exists in the codebase and matches entries by original path metadata.",
+        "Mention that if multiple dumped versions of the same path exist, the newest matching one is chosen.",
+        "Be explicit that this restore path is currently implemented in fileDump.c but not exposed as a shell built-in command yet."
+      ],
+      "good_commands_to_show": [
+        "Show the metadata files under ~/.snailDump/info and point out the stored original path and deletion date.",
+        "If asked for a live restore command, explain that the code support exists internally but is not currently wired into executor.c as a user-facing command."
+      ],
+      "edge_cases_or_questions": [
+        "Restore refuses to overwrite an already existing destination.",
+        "Restore fails if the parent directory of the original path no longer exists.",
+        "Restore selects the newest matching dump entry for the same original path.",
+        "This is a good future-scope item: expose restore as a built-in command."
+      ],
+      "implementation_refs": [
+        "src/fileDump.c",
+        "include/fileDump.h"
+      ]
+    },
+    {
+      "id": "snailrc_and_reloadConfig",
+      "title": "snailrc configuration file and live reload",
+      "why_it_matters": "This shows customization, persistence, and a polished developer experience.",
+      "show_first": [
+        "Open or briefly display ~/snailShellrc.",
+        "Point out theme, prompt, startup, ui, and shell sections.",
+        "Change one visible setting, then run reloadConfig to apply it without restarting."
+      ],
+      "good_commands_to_show": [
+        "snailHelp",
+        "reloadConfig"
+      ],
+      "edge_cases_or_questions": [
+        "reloadConfig with extra arguments prints an error.",
+        "If reload fails, the shell prints an error and keeps running.",
+        "Booleans accept true/false, yes/no, on/off, and 1/0.",
+        "path_style supports full, home_relative, basename, and shortened.",
+        "Startup commands can be defined as command1, command2, command3, etc."
+      ],
+      "implementation_refs": [
+        "src/config.c",
+        "src/reloadConfig.c",
+        "snail.conf"
+      ]
+    },
+    {
+      "id": "history_and_line_editing",
+      "title": "History, prompt interaction, and line editing",
+      "why_it_matters": "These make the shell feel interactive and complete, not just parser plus exec.",
+      "show_first": [
+        "Run a few commands.",
+        "Use up-arrow and down-arrow to navigate history.",
+        "Use left and right arrows to move within the line.",
+        "Show tab completion on a file or directory prefix."
+      ],
+      "good_commands_to_show": [
+        "Type a few commands first, then use arrow keys.",
+        "Create similarly named files and press Tab to show completion or suggestions."
+      ],
+      "edge_cases_or_questions": [
+        "History persists across sessions in ~/.snailCHistory.",
+        "Ctrl+L clears the screen and redraws the prompt.",
+        "Ctrl+D exits the shell.",
+        "Tab completion supports case-insensitive prefix matching.",
+        "If there are multiple matches with no longer common prefix, Snail lists candidates."
+      ],
+      "implementation_refs": [
+        "src/repl.c",
+        "src/commandHistory.c"
+      ]
+    },
+    {
+      "id": "extra_polish_features",
+      "title": "Extra features you may want to mention",
+      "why_it_matters": "These are features evaluators often count as polish even if they were not explicitly requested.",
+      "show_first": [
+        "Mention these after the main shell features so they feel like bonuses, not distractions."
+      ],
+      "good_commands_to_show": [
+        "rm -i <directory> for interactive file selection inside a directory",
+        "ls -l",
+        "tree <dir>",
+        "exit"
+      ],
+      "edge_cases_or_questions": [
+        "The prompt can show git branch, exit status, time, and last command duration depending on config.",
+        "ls output colors are configurable through the config file.",
+        "The shell measures last command duration and can display it when above a threshold.",
+        "Startup commands execute through the same parser and executor flow as normal commands.",
+        "Built-ins are added to history, and pipelines are stored as a combined history entry."
+      ],
+      "implementation_refs": [
+        "src/prompt.c",
+        "src/config.c",
+        "src/repl.c",
+        "src/lsCommand.c",
+        "src/commandHistory.c"
+      ]
+    }
+  ],
+  "likely_questions_you_can_answer_confidently": [
+    {
+      "question": "What makes Snail different from just using /bin/sh or bash?",
+      "answer_points": [
+        "It is a custom shell written in C with its own parser, REPL, built-ins, prompt system, config loader, history, tab completion, and safe deletion workflow.",
+        "Its standout custom behavior is dump-based deletion instead of immediate permanent removal."
+      ]
+    },
+    {
+      "question": "Do built-ins also work with redirection and pipelines?",
+      "answer_points": [
+        "Yes.",
+        "For normal execution, executor.c temporarily redirects stdin/stdout around built-ins.",
+        "For pipelines, built-ins run in child processes through executeBuiltIn."
+      ]
+    },
+    {
+      "question": "How is deletion made safer?",
+      "answer_points": [
+        "rm and rmdir send entries to ~/.snailDump instead of permanently deleting them.",
+        "Metadata records the original path, deletion time, and type.",
+        "Old dump entries can be cleaned automatically after 48 hours."
+      ]
+    },
+    {
+      "question": "Can deleted files be restored?",
+      "answer_points": [
+        "The restore logic exists internally in src/fileDump.c.",
+        "It restores by original path metadata and picks the newest match.",
+        "At the moment it is not yet exposed as a shell command, so that is a current limitation or future enhancement."
+      ]
+    },
+    {
+      "question": "How do you handle invalid syntax?",
+      "answer_points": [
+        "The parser rejects malformed redirection and invalid pipelines.",
+        "Individual commands also validate operands and options and return errors clearly."
+      ]
+    }
+  ],
+  "demo_tips": [
+    "Keep one dedicated demo folder so you can create and remove files without clutter.",
+    "Prefer short commands with visible output.",
+    "For the dump demo, create tiny throwaway files so the before-and-after is obvious.",
+    "If someone asks for restore live, present it as implemented backend logic plus a currently missing command hook, not as a failed feature."
+  ]
+}
