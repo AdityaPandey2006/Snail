@@ -11,6 +11,14 @@
 #include<libgen.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include "fileDump.h"
+#include <limits.h>
+#ifndef PATH_MAX
+#include <linux/limits.h>
+#endif
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #define STAT_FUNC stat
 #define STAT_STRUCT struct stat
@@ -78,17 +86,72 @@ int copyFile(const char *srcPath, const char *destPath) {
     return 0;
 }
 
+static int pathExists(const char *path){
+    struct stat st;
+    return (path != NULL && lstat(path, &st) == 0);
+}
+
+static int backupDestinationToDumpIfExists(const char *destPath, int *backupDone){
+    if(backupDone == NULL){
+        return 0;
+    }
+
+    *backupDone = 0;
+    if(!pathExists(destPath)){
+        return 1;
+    }
+
+    if(sendToDump((char*)destPath) != 1){
+        fprintf(stderr, "Failed to move destination '%s' to dump\n", destPath);
+        return 0;
+    }
+
+    *backupDone = 1;
+    return 1;
+}
+
+static int restoreDestinationFromDump(const char *destPath, int backupDone){
+    if(!backupDone){
+        return 1;
+    }
+
+    if(pathExists(destPath)){
+        if(remove(destPath) != 0){
+            perror("rollback cleanup failed");
+            return 0;
+        }
+    }
+
+    char restorePath[PATH_MAX] = {0};
+    if(strlen(destPath) >= sizeof(restorePath)){
+        fprintf(stderr, "rollback path too long\n");
+        return 0;
+    }
+    strncpy(restorePath, destPath, sizeof(restorePath) - 1);
+
+    if(fileRestoreHelper(restorePath) != 1){
+        fprintf(stderr, "Rollback failed: could not restore '%s' from dump\n", destPath);
+        return 0;
+    }
+
+    return 1;
+}
+
 //for now only two arguments will be worked upon....
 executorResult overwrite(char **args){
 
     char *sourcePath = args[0];
     char *destPath   = args[1];
+    int backupDone = 0;
     if(!isfilePath(sourcePath)){
         printf("Source '%s' is not a valid file\n",sourcePath);
         return (executorResult){0,1};
     }
     if(!isfilePath(destPath)){
         printf("Dest'%s' is not a valid file\n",destPath);
+        return (executorResult){0,1};
+    }
+    if(!backupDestinationToDumpIfExists(destPath, &backupDone)){
         return (executorResult){0,1};
     }
     if(rename(sourcePath,destPath)==0){
@@ -98,10 +161,16 @@ executorResult overwrite(char **args){
     if(errno==EXDEV){
         if(copyFile(sourcePath,destPath)!=0){
             printf("Failed to copy '%s' to '%s' :%s\n",sourcePath,destPath,strerror(errno));
+            if(!restoreDestinationFromDump(destPath, backupDone)){
+                fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+            }
             return (executorResult){0,1};
         }
         if(unlink(sourcePath)!=0){
             printf("file copied butr coudn't remove source file");
+            if(!restoreDestinationFromDump(destPath, backupDone)){
+                fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+            }
             return (executorResult){0,1};
         }
         printf("Successfully overwritten '%s' with '%s' across filesystems\n", destPath, sourcePath);
@@ -110,6 +179,9 @@ executorResult overwrite(char **args){
 
     //any other rename error....in overwritten
     printf("overwrite failed: %s\n",strerror(errno));
+    if(!restoreDestinationFromDump(destPath, backupDone)){
+        fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+    }
     return (executorResult){0,1};
 }
 executorResult changeDir(char **args){
@@ -132,6 +204,14 @@ executorResult changeDir(char **args){
     // Build the new full path: dir_path + "/" + filename fir directory....
     char newPath[1024];
     snprintf(newPath, sizeof(newPath), "%s/%s", destPath, fileName);
+    int backupDone = 0;
+    if(pathExists(newPath) && isdirPath(newPath)){
+        printf("Cannot overwrite directory '%s' with file '%s'\n", newPath, sourcePath);
+        return (executorResult){0,1};
+    }
+    if(!backupDestinationToDumpIfExists(newPath, &backupDone)){
+        return (executorResult){0,1};
+    }
 
     if(rename(sourcePath,newPath)==0){
         printf("Successfully moved '%s' to new directory...\n",fileName);
@@ -147,26 +227,46 @@ executorResult changeDir(char **args){
                 }
                 else{
                     printf("could not remove the original file..for moving....");
+                    if(!restoreDestinationFromDump(newPath, backupDone)){
+                        fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+                    }
                     return (executorResult){0,1};
                 }
             }
             else{
                 perror("error in moving file across file systems\n");
+                if(!restoreDestinationFromDump(newPath, backupDone)){
+                    fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+                }
                 return (executorResult){0,1};
             }
         }
         if(errno==EACCES){
             printf("permission required to move");
+            if(!restoreDestinationFromDump(newPath, backupDone)){
+                fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+            }
             return (executorResult){0,1};
         }
+    }
+    if(!restoreDestinationFromDump(newPath, backupDone)){
+        fprintf(stderr, "Warning: destination restore after failure did not complete\n");
     }
     return (executorResult){0,1};
 }
 executorResult renameFile(char **args){
     char*oldFile=args[0];
     char*newFile=args[1];
+    int backupDone = 0;
     if(!isfilePath(oldFile)){
         printf("%s is not a valid file path",oldFile);
+        return (executorResult){0,1};
+    }
+    if(pathExists(newFile) && isdirPath(newFile)){
+        printf("Cannot rename file '%s' over directory '%s'\n", oldFile, newFile);
+        return (executorResult){0,1};
+    }
+    if(!backupDestinationToDumpIfExists(newFile, &backupDone)){
         return (executorResult){0,1};
     }
     if(rename(oldFile,newFile)==0){
@@ -175,6 +275,9 @@ executorResult renameFile(char **args){
     }
     else{
         perror("error renaming file...");
+        if(!restoreDestinationFromDump(newFile, backupDone)){
+            fprintf(stderr, "Warning: destination restore after failure did not complete\n");
+        }
         return (executorResult){0,1};
     }
 }

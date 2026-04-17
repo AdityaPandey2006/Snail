@@ -12,3 +12,8 @@ report_halstead_rm.tex
 report_progress.tex
 report_throughput.tex
 snail_metrics_report.tex
+
+
+build/
+*.o
+snail
