@@ -10,6 +10,8 @@ static const SnailConfig kDefaultConfig = {
     .foreground = "#d4d4d4",
     .prompt_color = "#00ff9c",
     .directory_color = "#61afef",
+    .ls_file_color = "#d4d4d4",
+    .ls_directory_color = "#61afef",
     .error_color = "#ff5f56",
     .success_color = "#50fa7b",
     .rainbow_directory = 0,
@@ -39,6 +41,8 @@ static SnailConfig gConfig = {
     .foreground = "#d4d4d4",
     .prompt_color = "#00ff9c",
     .directory_color = "#61afef",
+    .ls_file_color = "#d4d4d4",
+    .ls_directory_color = "#61afef",
     .error_color = "#ff5f56",
     .success_color = "#50fa7b",
     .rainbow_directory = 0,
@@ -77,6 +81,8 @@ static const char *kDefaultConfigFile =
     "foreground = \"#d4d4d4\"\n"
     "prompt_color = \"#00ff9c\"\n"
     "directory_color = \"#61afef\"\n"
+    "ls_file_color = \"#d4d4d4\"\n"
+    "ls_directory_color = \"#61afef\"\n"
     "error_color = \"#ff5f56\"\n"
     "success_color = \"#50fa7b\"\n"
     "rainbow_directory = false\n"
@@ -100,9 +106,12 @@ static const char *kDefaultConfigFile =
     "duration_threshold_ms = 100\n"
     "\n"
     "[startup]\n"
-    "# Add commands as command1, command2, command3 ...\n"
+    "# Add startup commands as command1, command2, command3 ... (no commas)\n"
+    "# Uncommented lines run automatically when Snail starts.\n"
+    "# Example:\n"
     "command1 = \"echo Welcome to Snail\"\n"
-    "# command2 = \"pwd\"\n"
+    "command2 = \"pwd\"\n"
+    "# command3 = \"ls\"\n"
     "\n"
     "[ui]\n"
     "font_family = \"Consolas\"\n"
@@ -312,6 +321,12 @@ int loadSnailConfig(void){
             }
             else if(strcmp(key, "directory_color") == 0){
                 copyValue(gConfig.directory_color, sizeof(gConfig.directory_color), value);
+            }
+            else if(strcmp(key, "ls_file_color") == 0){
+                copyValue(gConfig.ls_file_color, sizeof(gConfig.ls_file_color), value);
+            }
+            else if(strcmp(key, "ls_directory_color") == 0){
+                copyValue(gConfig.ls_directory_color, sizeof(gConfig.ls_directory_color), value);
             }
             else if(strcmp(key, "error_color") == 0){
                 copyValue(gConfig.error_color, sizeof(gConfig.error_color), value);

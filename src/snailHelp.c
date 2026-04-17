@@ -20,8 +20,8 @@ executorResult snailHelpCommand(Command *newCommand){
     printf("  mv <src> <dest>     Move or rename a file or directory.\n");
     printf("  mkdir <dir>         Create a directory.\n");
     printf("  touch <file>        Create a file or update its timestamp.\n");
-    printf("  rmdir <dir>         Remove an empty directory.\n");
-    printf("  rm <path>           Move a file or directory into the Snail dump.\n");
+    printf("  rmdir <dir>         Remove an empty directory (to dump).\n");
+    printf("  rm [opts] <path>    Move files to dump; use -r for directories.\n");
     printf("  tree [dir]          Print a directory tree.\n");
     printf("  clear               Clear the screen.\n");
     printf("  reloadConfig        Reload ~/snailShellrc without restarting.\n");
@@ -33,6 +33,12 @@ executorResult snailHelpCommand(Command *newCommand){
     printf("  cmd > file          Redirect stdout to a file.\n");
     printf("  cmd >> file         Append stdout to a file.\n");
     printf("  cmd < file          Redirect stdin from a file.\n\n");
+
+    printf("rm options:\n");
+    printf("  rm <file>           Remove file to dump.\n");
+    printf("  rm -r <dir>         Remove directory to dump.\n");
+    printf("  rm -f <path>        Force mode (ignores missing files).\n");
+    printf("  rm -rf <path>       Force + recursive for directories.\n\n");
 
     printf("Config file:\n");
     printf("  Active path: %s\n", configPath);
@@ -49,6 +55,7 @@ executorResult snailHelpCommand(Command *newCommand){
     printf("Config sections and common keys:\n");
     printf("  [theme]\n");
     printf("    background, foreground, prompt_color, directory_color,\n");
+    printf("    ls_file_color, ls_directory_color,\n");
     printf("    error_color, success_color, rainbow_directory\n");
     printf("  [prompt]\n");
     printf("    path_style, separator, show_user, show_hostname,\n");

@@ -16,6 +16,8 @@ typedef struct{
     char foreground[8];
     char prompt_color[8];
     char directory_color[8];
+    char ls_file_color[8];
+    char ls_directory_color[8];
     char error_color[8];
     char success_color[8];
     int rainbow_directory;

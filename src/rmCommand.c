@@ -295,23 +295,90 @@ executorResult rmCommand(Command* newCommand){
         result.statusCode=1;
         return result;
     }
-    if(strcmp(newCommand->arguments[1], "-i") == 0) {
-        if(newCommand->argCount < 3 || newCommand->arguments[2] == NULL) {
+    int recursive = 0;
+    int force = 0;
+    int interactive = 0;
+    int targetStart = 1;
+
+    for(; targetStart < newCommand->argCount; targetStart++){
+        char *arg = newCommand->arguments[targetStart];
+        if(arg == NULL){
+            break;
+        }
+        if(arg[0] != '-' || arg[1] == '\0'){
+            break;
+        }
+        if(strcmp(arg, "--") == 0){
+            targetStart++;
+            break;
+        }
+
+        for(int j = 1; arg[j] != '\0'; j++){
+            if(arg[j] == 'r' || arg[j] == 'R'){
+                recursive = 1;
+            }
+            else if(arg[j] == 'f'){
+                force = 1;
+            }
+            else if(arg[j] == 'i'){
+                interactive = 1;
+            }
+            else{
+                fprintf(stderr, "rm: invalid option -- '%c'\n", arg[j]);
+                result.statusCode = 1;
+                return result;
+            }
+        }
+    }
+
+    if(interactive){
+        if(recursive || force){
+            fprintf(stderr, "rm: -i cannot be combined with -r/-f in this mode\n");
+            result.statusCode = 1;
+            return result;
+        }
+        if(targetStart >= newCommand->argCount || newCommand->arguments[targetStart] == NULL) {
             printf("rm -i: missing directory path\n");
             result.statusCode = 1;
             return result;
         }
-        executorResult currResult = interactiveRemoval(newCommand->arguments[2]);
+        if(targetStart + 1 < newCommand->argCount && newCommand->arguments[targetStart + 1] != NULL){
+            fprintf(stderr, "rm -i: too many operands\n");
+            result.statusCode = 1;
+            return result;
+        }
+        executorResult currResult = interactiveRemoval(newCommand->arguments[targetStart]);
         return currResult;
     }
 
-    for(int i=1;newCommand->arguments[i]!=NULL;i++){
-        char* filePath=newCommand->arguments[i];
-        executorResult currentResult=fileRemoval(filePath);
-        if(currentResult.statusCode==1){
-            result.statusCode=1;
-            result.shouldExit=0;
+    if(targetStart >= newCommand->argCount || newCommand->arguments[targetStart] == NULL){
+        fprintf(stderr, "rm: missing operand\n");
+        result.statusCode = 1;
+        return result;
+    }
+
+    for(int i = targetStart; newCommand->arguments[i] != NULL; i++){
+        char *filePath = newCommand->arguments[i];
+        struct stat st;
+        if(lstat(filePath, &st) != 0){
+            if(force && errno == ENOENT){
+                continue;
+            }
             perror(filePath);
+            result.statusCode = 1;
+            continue;
+        }
+
+        if(S_ISDIR(st.st_mode) && !recursive){
+            fprintf(stderr, "rm: cannot remove '%s': is a directory (use rm -rf)\n", filePath);
+            result.statusCode = 1;
+            continue;
+        }
+
+        executorResult currentResult = fileRemoval(filePath);
+        if(currentResult.statusCode == 1){
+            result.statusCode = 1;
+            fprintf(stderr, "rm: failed to remove '%s'\n", filePath);
             continue;
         }
     }

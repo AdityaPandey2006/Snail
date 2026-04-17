@@ -12,6 +12,10 @@
 #include "terminal.h"
 #include<stdbool.h>
 #include <time.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #define COMMANDSIZE 256
 
@@ -96,6 +100,229 @@ static void executeConfiguredCommand(const char *commandText){
     }
 }
 
+static int isTokenDelimiter(char ch){
+    return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
+}
+
+static void redrawInputLine(const char *input, int len, int cursorPos){
+    printf("\33[2K\r");
+    printPrompt();
+    printf("%s", input);
+    for(int i = len; i > cursorPos; i--){
+        printf("\b");
+    }
+    fflush(stdout);
+}
+
+static void trimToCommonPrefix(char *prefix, const char *candidate){
+    size_t i = 0;
+    while(prefix[i] != '\0' && candidate[i] != '\0' && prefix[i] == candidate[i]){
+        i++;
+    }
+    prefix[i] = '\0';
+}
+
+static int resolveSearchDirectory(const char *typedDir, char *resolvedDir, size_t resolvedSize){
+    if(typedDir == NULL || typedDir[0] == '\0'){
+        if(resolvedSize < 2){
+            return 0;
+        }
+        strcpy(resolvedDir, ".");
+        return 1;
+    }
+
+    if(typedDir[0] == '~'){
+        const char *home = getenv("HOME");
+        if(home == NULL){
+            return 0;
+        }
+        if(typedDir[1] == '\0'){
+            int written = snprintf(resolvedDir, resolvedSize, "%s", home);
+            return written >= 0 && (size_t)written < resolvedSize;
+        }
+        if(typedDir[1] == '/'){
+            int written = snprintf(resolvedDir, resolvedSize, "%s%s", home, typedDir + 1);
+            return written >= 0 && (size_t)written < resolvedSize;
+        }
+        // ~user not supported right now.
+        return 0;
+    }
+
+    int written = snprintf(resolvedDir, resolvedSize, "%s", typedDir);
+    return written >= 0 && (size_t)written < resolvedSize;
+}
+
+static int isDirectoryMatch(const char *resolvedDir, const char *entryName){
+    char path[PATH_MAX] = {0};
+    int written = snprintf(path, sizeof(path), "%s/%s", resolvedDir, entryName);
+    if(written < 0 || (size_t)written >= sizeof(path)){
+        return 0;
+    }
+
+    struct stat st;
+    if(stat(path, &st) != 0){
+        return 0;
+    }
+    return S_ISDIR(st.st_mode);
+}
+
+static int replaceInputRange(
+    char *input,
+    int *len,
+    int *cursorPos,
+    int start,
+    int endExclusive,
+    const char *replacement
+){
+    int oldLen = endExclusive - start;
+    int newLen = (int)strlen(replacement);
+    int delta = newLen - oldLen;
+    if(*len + delta >= COMMANDSIZE){
+        return 0;
+    }
+
+    memmove(&input[start + newLen], &input[endExclusive], (*len - endExclusive) + 1);
+    memcpy(&input[start], replacement, newLen);
+    *len += delta;
+    *cursorPos = start + newLen;
+    return 1;
+}
+
+static void handleTabCompletion(char *input, int *len, int *cursorPos){
+    if(input == NULL || len == NULL || cursorPos == NULL){
+        return;
+    }
+    if(*cursorPos < 0 || *cursorPos > *len){
+        return;
+    }
+
+    int tokenStart = *cursorPos;
+    while(tokenStart > 0 && !isTokenDelimiter(input[tokenStart - 1])){
+        tokenStart--;
+    }
+
+    int tokenLen = *cursorPos - tokenStart;
+    if(tokenLen <= 0){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+
+    char token[PATH_MAX] = {0};
+    if((size_t)tokenLen >= sizeof(token)){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+    memcpy(token, &input[tokenStart], tokenLen);
+    token[tokenLen] = '\0';
+
+    char typedDir[PATH_MAX] = {0};
+    char namePrefix[PATH_MAX] = {0};
+    char *lastSlash = strrchr(token, '/');
+    if(lastSlash != NULL){
+        size_t dirLen = (size_t)(lastSlash - token + 1);
+        if(dirLen >= sizeof(typedDir)){
+            write(STDOUT_FILENO, "\a", 1);
+            return;
+        }
+        memcpy(typedDir, token, dirLen);
+        typedDir[dirLen] = '\0';
+        snprintf(namePrefix, sizeof(namePrefix), "%s", lastSlash + 1);
+    }
+    else{
+        typedDir[0] = '\0';
+        snprintf(namePrefix, sizeof(namePrefix), "%s", token);
+    }
+
+    char resolvedDir[PATH_MAX] = {0};
+    if(!resolveSearchDirectory(typedDir, resolvedDir, sizeof(resolvedDir))){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+
+    DIR *dir = opendir(resolvedDir);
+    if(dir == NULL){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+
+    struct dirent *entry;
+    int matchCount = 0;
+    char firstMatch[PATH_MAX] = {0};
+    char commonPrefix[PATH_MAX] = {0};
+    char matchList[64][PATH_MAX];
+    int listed = 0;
+    size_t prefixLen = strlen(namePrefix);
+
+    while((entry = readdir(dir)) != NULL){
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+            continue;
+        }
+        if(strncmp(entry->d_name, namePrefix, prefixLen) != 0){
+            continue;
+        }
+
+        if(matchCount == 0){
+            snprintf(firstMatch, sizeof(firstMatch), "%s", entry->d_name);
+            snprintf(commonPrefix, sizeof(commonPrefix), "%s", entry->d_name);
+        }
+        else{
+            trimToCommonPrefix(commonPrefix, entry->d_name);
+        }
+
+        if(listed < (int)(sizeof(matchList) / sizeof(matchList[0]))){
+            snprintf(matchList[listed], sizeof(matchList[listed]), "%s", entry->d_name);
+            listed++;
+        }
+        matchCount++;
+    }
+    closedir(dir);
+
+    if(matchCount == 0){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+
+    char completionName[PATH_MAX] = {0};
+    if(matchCount == 1){
+        snprintf(completionName, sizeof(completionName), "%s", firstMatch);
+    }
+    else{
+        if(strlen(commonPrefix) > prefixLen){
+            snprintf(completionName, sizeof(completionName), "%s", commonPrefix);
+        }
+        else{
+            printf("\n");
+            for(int i = 0; i < listed; i++){
+                printf("%s  ", matchList[i]);
+            }
+            if(matchCount > listed){
+                printf("... ");
+            }
+            printf("\n");
+            return;
+        }
+    }
+
+    char replacement[PATH_MAX] = {0};
+    int written = snprintf(replacement, sizeof(replacement), "%s%s", typedDir, completionName);
+    if(written < 0 || (size_t)written >= sizeof(replacement)){
+        write(STDOUT_FILENO, "\a", 1);
+        return;
+    }
+
+    if(matchCount == 1 && isDirectoryMatch(resolvedDir, completionName)){
+        size_t replLen = strlen(replacement);
+        if(replLen + 1 < sizeof(replacement)){
+            replacement[replLen] = '/';
+            replacement[replLen + 1] = '\0';
+        }
+    }
+
+    if(!replaceInputRange(input, len, cursorPos, tokenStart, *cursorPos, replacement)){
+        write(STDOUT_FILENO, "\a", 1);
+    }
+}
+
 int readInput(){
     char input[COMMANDSIZE] = "";
     int cursorPos=0;
@@ -127,16 +354,13 @@ int readInput(){
                 len--;
                 cursorPos--;
                 input[len] = '\0';
-                // redraw
-                printf("\33[2K\r");
-                printPrompt();
-                printf("%s", input);
-                // reposition cursor
-                for(int i = len; i > cursorPos; i--){
-                    printf("\b");
-                }
-                fflush(stdout);
+                redrawInputLine(input, len, cursorPos);
             }
+        }
+        else if(c == '\t'){
+            historyIndex = currentSize;
+            handleTabCompletion(input, &len, &cursorPos);
+            redrawInputLine(input, len, cursorPos);
         }
         // escape sequence....
         else if(c == 27){
@@ -150,39 +374,31 @@ int readInput(){
                 if(seq[1] == 'A'){
                     if(historyIndex > 0){
                         historyIndex--;
-                        printf("\33[2K\r");
-                        printPrompt();
 
                         strncpy(input, History[historyIndex].cmd,COMMANDSIZE-1);
                         input[COMMANDSIZE - 1] = '\0';
                         len = strlen(input);
                         cursorPos=len;
-                        printf("%s", input);
-                        fflush(stdout);
+                        redrawInputLine(input, len, cursorPos);
                     }
                 }
                 // down arrow
                 else if(seq[1] == 'B'){
                     if(historyIndex < currentSize - 1){
                         historyIndex++;
-                        printf("\33[2K\r");
-                        printPrompt();
 
                         strncpy(input, History[historyIndex].cmd,COMMANDSIZE-1);
                         input[COMMANDSIZE-1]='\0';
                         len = strlen(input);
                         cursorPos=len;
-                        printf("%s", input);
-                        fflush(stdout);
+                        redrawInputLine(input, len, cursorPos);
                     }
                     else{
                         historyIndex = currentSize;
-                        printf("\33[2K\r");
-                        printPrompt();
                         len = 0;
                         cursorPos = 0; 
                         input[0] = '\0';
-                        fflush(stdout);
+                        redrawInputLine(input, len, cursorPos);
                     }
                 }
                 //<- arrow
@@ -207,9 +423,7 @@ int readInput(){
         else if(c==12){
             printf("\033[H\033[J");
             refreshPromptTimestamp();
-            printPrompt();
-            printf("%s", input);
-            fflush(stdout);
+            redrawInputLine(input, len, cursorPos);
         }
         //ctrl + D to close the shell 
         else if(c==4){
@@ -230,15 +444,7 @@ int readInput(){
                 len++;
                 cursorPos++;
                 input[len] = '\0';
-                // redraw
-                printf("\33[2K\r");
-                printPrompt();
-                printf("%s", input);
-                // move cursor back
-                for(int i = len; i > cursorPos; i--){
-                    printf("\b");
-                }
-                fflush(stdout);
+                redrawInputLine(input, len, cursorPos);
             }
         }
     }
