@@ -83,6 +83,7 @@ int isBuiltIn(Command* newCommand){
     (strcmp(newCommand->commandName,"rmdir")==0)||
     (strcmp(newCommand->commandName,"rm")==0)||
     (strcmp(newCommand->commandName,"tree")==0)||
+    (strcmp(newCommand->commandName,"dumpList")==0)||
     (strcmp(newCommand->commandName,"snailHelp")==0)||
     (strcmp(newCommand->commandName,"reloadConfig")==0)
     ){
@@ -182,16 +183,15 @@ executorResult executeCommand(Command* newCommand){
         else if (strcmp(newCommand->commandName, "tree") == 0) {
             result = fileTreeCommand(newCommand);
         }
+        else if(strcmp(newCommand->commandName, "dumpList") == 0){
+            result = dumpList(newCommand);
+        }
         else if(strcmp(newCommand->commandName, "snailHelp") == 0){
             result = snailHelpCommand(newCommand);
         }
         else if(strcmp(newCommand->commandName, "reloadConfig") == 0){
             result = reloadConfigCommand(newCommand);
         }
-        // else if (strcmp(newCommand->commandName, "dumplist") == 0) {
-        //     applyRedirection(newCommand,result);
-        //     result = dumpList(newCommand);
-        // }
     }
     else{
         result=externalCommand(newCommand);
@@ -249,6 +249,9 @@ executorResult executeBuiltIn(Command *cmd){
     }
     else if(strcmp(cmd->commandName, "tree") == 0){
         result = fileTreeCommand(cmd);
+    }
+    else if(strcmp(cmd->commandName, "dumpList") == 0){
+        result = dumpList(cmd);
     }
     else if(strcmp(cmd->commandName, "snailHelp") == 0){
         result = snailHelpCommand(cmd);

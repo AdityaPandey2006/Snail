@@ -3,7 +3,7 @@
 #include "parser.h"
 
 int makeDumpFolder(void);
-int cleanDump(void);
+int cleanDump(int *removedCount);
 int fileRestore(Command* newCmd);
 int fileRestoreHelper(char* entryPath);
 int sendToDump(char* entryPath);// both files and folders can be sent to the dump. Calling files and folders together as entries

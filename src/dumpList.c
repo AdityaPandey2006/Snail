@@ -1,103 +1,142 @@
-// #include "dumpList.h"
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <unistd.h>
-// #include <dirent.h>
-// #include <linux/limits.h>
+#include "dumpList.h"
+#include <dirent.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <linux/limits.h>
+static int buildPath(char *dest, size_t destSize, const char *fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    int written = vsnprintf(dest, destSize, fmt, args);
+    va_end(args);
 
-// executorResult dumpList(Command* newCommand) {
-//     executorResult result;
-//     result.shouldExit = 0;
-//     result.statusCode = 0;
+    return written >= 0 && (size_t)written < destSize;
+}
 
-//     char* home = getenv("HOME"); // gives current user's home directory path 
-//     if (!home) {
-//         fprintf(stderr, "dumplist: Could not get HOME environment variable\n");
-//         result.statusCode = 1; // command execution failed 
-//         return result;
-//     }
+executorResult dumpList(Command* newCommand){
+    executorResult result = {0, 0};
 
-//     char dumpPath[PATH_MAX];  // PATH_MAX is max. char length allowed as path (in Linux)
-//     char dumpInfoPath[PATH_MAX];
+    if(newCommand->argCount > 1){
+        fprintf(stderr, "dumpList: too many arguments\n");
+        result.statusCode = 1;
+        return result;
+    }
 
-//     sprintf(dumpPath, "%s/.snailDump/", home);  //   dumpPath = home/.snailDump/
-//     sprintf(dumpInfoPath, "%s/info/", dumpPath);  // dumpInfoPath = dumpPath/info/
+    const char *home = getenv("HOME");
+    if(home == NULL){
+        fprintf(stderr, "dumpList: HOME is not set\n");
+        result.statusCode = 1;
+        return result;
+    }
 
-  
-//     if (access(dumpPath, F_OK) != 0 || access(dumpInfoPath, F_OK) != 0)  // to check if file/folder exists
-//     // if either of dumpPath  or dumpInfoPath is missing 
-//     {
-//         printf("The snailDump is currently empty or not created yet.\n");
-//         return result;
-//     }
+    char dumpPath[PATH_MAX] = {0};
+    char dumpInfoPath[PATH_MAX] = {0};
+    if(!buildPath(dumpPath, sizeof(dumpPath), "%s/.snailDump", home) ||
+       !buildPath(dumpInfoPath, sizeof(dumpInfoPath), "%s/info", dumpPath)){
+        fprintf(stderr, "dumpList: dump path too long\n");
+        result.statusCode = 1;
+        return result;
+    }
 
-//     DIR* dumpInfoDir = opendir(dumpInfoPath);
-//     if (!dumpInfoDir) {
-//         perror("dumplist: Failed to open dump info directory");
-//         result.statusCode = 1; // command execution failed
-//         return result;
-//     }
+    if(access(dumpPath, F_OK) != 0 || access(dumpInfoPath, F_OK) != 0){
+        printf("The dump is empty or has not been created yet.\n");
+        return result;
+    }
 
-//     struct dirent* entry;
-//     int count = 0;
+    DIR *dumpInfoDir = opendir(dumpInfoPath);
+    if(dumpInfoDir == NULL){
+        perror("dumpList");
+        result.statusCode = 1;
+        return result;
+    }
 
-//     printf("\n%-50s | %s\n", "ORIGINAL FILE PATH", "DELETION DATE");
-//     printf("---------------------------------------------------+----------------------\n");
+    printf("%-50s | %-19s | %s\n", "ORIGINAL PATH", "DELETION DATE", "TYPE");
+    printf("---------------------------------------------------+---------------------+----------\n");
 
-//     while ((entry = readdir(dumpInfoDir)) != NULL) {
-//         // to Skip current and parent directory pointers
-//         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-//             continue;
-//         }
+    struct dirent *entry;
+    int count = 0;
+    while((entry = readdir(dumpInfoDir)) != NULL){
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0){
+            continue;
+        }
 
-//         char infoFilePath[PATH_MAX];
-//         sprintf(infoFilePath, "%s%s", dumpInfoPath, entry->d_name);
+        char infoFilePath[PATH_MAX] = {0};
+        if(!buildPath(infoFilePath, sizeof(infoFilePath), "%s/%s", dumpInfoPath, entry->d_name)){
+            continue;
+        }
 
-//         FILE* fp = fopen(infoFilePath, "r");
-//         if (fp) {
-//             char buffer[1024];
-//             char origPath[PATH_MAX] = "";
-//             char delDate[25] = "";
-            
-//             // State trackers: 0 = searching, 1 = header found (grab next line), 2 = data saved
-//             int pFound = 0; 
-//             int dFound = 0; 
+        FILE *fp = fopen(infoFilePath, "r");
+        if(fp == NULL){
+            continue;
+        }
 
-//             while (fgets(buffer, sizeof(buffer), fp)) {
-               
-//                 buffer[strcspn(buffer, "\n")] = 0; // create a 0(null terminator) at the end of line
+        char buffer[512];
+        char originalPath[PATH_MAX] = {0};
+        char deletionDate[25] = {0};
+        char entryType[32] = {0};
+        int expectPath = 0;
+        int expectDeletionDate = 0;
+        int expectType = 0;
 
-//                 if (pFound == 1) {
-//                     strncpy(origPath, buffer, sizeof(origPath) - 1);
-//                     pFound = 2; 
-//                 } else if (dFound == 1) {
-//                     strncpy(delDate, buffer, sizeof(delDate) - 1);
-//                     dFound = 2;
-//                 }
+        while(fgets(buffer, sizeof(buffer), fp) != NULL){
+            buffer[strcspn(buffer, "\n")] = '\0';
 
-//                 // Check if the current line is a header
-//                 if (strcmp(buffer, "Path:") == 0) pFound = 1;
-//                 if (strcmp(buffer, "DeletionDate:") == 0) dFound = 1;
-//             }
-//             fclose(fp);
+            if(expectPath){
+                strncpy(originalPath, buffer, sizeof(originalPath) - 1);
+                expectPath = 0;
+                continue;
+            }
+            if(expectDeletionDate){
+                strncpy(deletionDate, buffer, sizeof(deletionDate) - 1);
+                expectDeletionDate = 0;
+                continue;
+            }
+            if(expectType){
+                strncpy(entryType, buffer, sizeof(entryType) - 1);
+                expectType = 0;
+                continue;
+            }
 
-//             // If we successfully extracted both pieces of data, print the row
-//             if (origPath[0] != '\0' && delDate[0] != '\0') {
-//                 // %-50.50s forces the string to take up exactly 50 characters, to keep the table aligned
-//                 printf("%-50.50s | %s\n", origPath, delDate);
-//                 count++;
-//             }
-//         }
-//     }
-//     closedir(dumpInfoDir);
+            if(strcmp(buffer, "Path:") == 0){
+                expectPath = 1;
+            }
+            else if(strcmp(buffer, "DeletionDate:") == 0){
+                expectDeletionDate = 1;
+            }
+            else if(strcmp(buffer, "Type:") == 0){
+                expectType = 1;
+            }
+        }
 
-//     if (count == 0) {
-//         printf("The dump is completely empty.\n");
-//     } else {
-//         printf("---------------------------------------------------+----------------------\n");
-//         printf("Total items in dump: %d\n\n", count);
-//     }
+        fclose(fp);
 
-//     return result;
-// }
+        if(originalPath[0] == '\0'){
+            continue;
+        }
+
+        if(deletionDate[0] == '\0'){
+            strncpy(deletionDate, "unknown", sizeof(deletionDate) - 1);
+        }
+        if(entryType[0] == '\0'){
+            strncpy(entryType, "unknown", sizeof(entryType) - 1);
+        }
+
+        printf("%-50.50s | %-19s | %s\n", originalPath, deletionDate, entryType);
+        count++;
+    }
+
+    closedir(dumpInfoDir);
+
+    if(count == 0){
+        printf("The dump is currently empty.\n");
+    }
+    else{
+        printf("---------------------------------------------------+---------------------+----------\n");
+        printf("Total items in dump: %d\n", count);
+    }
+
+    return result;
+}

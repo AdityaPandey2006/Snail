@@ -509,6 +509,9 @@ int readInput(){
 
 
 void replStart(){
+    int dumpCleanSuccess = 1;
+    int dumpRemovedCount = 0;
+
     if(!ensureSnailConfigExists()){
         fprintf(stderr, "Warning: could not create ~/snailShellrc, using in-memory defaults\n");
     }
@@ -519,17 +522,35 @@ void replStart(){
         printf("\033[H\033[J");
     }
     if(config->clean_dump_on_start){
-        int dumpCleanSuccess=cleanDump();
-        if(!dumpCleanSuccess){
-            printf("Warning: Dump cleanup error\n");
-        }
+        dumpCleanSuccess = cleanDump(&dumpRemovedCount);
     }
     unloadHistory();//to load the data in an array...
     atexit(loadHistory); //auto save the data
     snailPrinter();
-    for(int i = 0; i < config->startup_command_count; i++){
-        executeConfiguredCommand(config->startup_commands[i]);
+
+    if(config->startup_command_count > 0){
+        executeConfiguredCommand(config->startup_commands[0]);
+        if(config->clean_dump_on_start){
+            printf("Dump cleanup removed %d entr%s.\n",
+                   dumpRemovedCount,
+                   dumpRemovedCount == 1 ? "y" : "ies");
+            if(!dumpCleanSuccess){
+                printf("Warning: Dump cleanup error\n");
+            }
+        }
+        for(int i = 1; i < config->startup_command_count; i++){
+            executeConfiguredCommand(config->startup_commands[i]);
+        }
     }
+    else if(config->clean_dump_on_start){
+        printf("Dump cleanup removed %d entr%s.\n",
+               dumpRemovedCount,
+               dumpRemovedCount == 1 ? "y" : "ies");
+        if(!dumpCleanSuccess){
+            printf("Warning: Dump cleanup error\n");
+        }
+    }
+
     while(1){
         int quit=readInput();
         if(quit){ 

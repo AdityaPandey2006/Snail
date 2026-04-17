@@ -23,6 +23,7 @@ executorResult snailHelpCommand(Command *newCommand){
     printf("  rmdir <dir>         Remove an empty directory (to dump).\n");
     printf("  rm [opts] <path>    Move files to dump; use -r for directories.\n");
     printf("  tree [dir]          Print a directory tree.\n");
+    printf("  dumpList            Show entries currently stored in the dump.\n");
     printf("  clear               Clear the screen.\n");
     printf("  reloadConfig        Reload ~/snailShellrc without restarting.\n");
     printf("  exit                Exit the shell.\n");

@@ -125,7 +125,7 @@ int makeDumpFolder(){
     return success;
 }
 
-int cleanDump(){
+int cleanDump(int *removedCount){
     char* home=getenv("HOME");
     if(home==NULL){
         return 0;
@@ -143,7 +143,10 @@ int cleanDump(){
 //removed / from the end
 
     int success=1;
-    int removedCount = 0;
+    int localRemovedCount = 0;
+    if(removedCount != NULL){
+        *removedCount = 0;
+    }
     if((access(dumpPath,F_OK)!=0)||(access(dumpFilesPath,F_OK)!=0)||(access(dumpInfoPath,F_OK)!=0)){
         int makeDumpSuccess=makeDumpFolder();
         if(!makeDumpSuccess){
@@ -257,14 +260,15 @@ int cleanDump(){
                 perror("remove failed");
                 continue;
             }
-            removedCount++;
+            localRemovedCount++;
         }
        
     }
     closedir(dumpFileDir);
     closedir(dumpInfoDir);
-
-    printf("Dump cleanup removed %d entr%s.\n", removedCount, removedCount == 1 ? "y" : "ies");
+    if(removedCount != NULL){
+        *removedCount = localRemovedCount;
+    }
 
     return success;
 }
