@@ -23,7 +23,7 @@ typedef struct {
 } fileEntry;
 
 
-// rm sends entries to the dump instead of deleting them permanently.
+// rm sends entries to the dump instead of deleting them permanently 
 
 executorResult fileRemoval(char *filePath){
     executorResult result;
@@ -55,31 +55,61 @@ int cmp(const void *a,const void *b){
     return ((fileEntry*)b)->score > ((fileEntry*)a)->score ? 1 : -1;
 }
 
+static void discardPendingInput(void) {
+    tcflush(STDIN_FILENO, TCIFLUSH);
+}
+
+static int readDeletionConfirmation(void) {
+    int confirmation;
+    while(true){
+        confirmation = getchar();
+        if(confirmation == EOF){
+            return 'n';
+        }
+        if(confirmation == '\n' || confirmation == '\r'){
+            continue;
+        }
+        if(confirmation == '\033'){
+            int next = getchar();
+            if(next == '['){
+                getchar();
+            }
+            continue;
+        }
+        while(confirmation != '\n' && confirmation != '\r' && confirmation != EOF){
+            int trailing = getchar();
+            if(trailing == '\n' || trailing == '\r' || trailing == EOF){
+                break;
+            }
+        }
+        if(confirmation == 'Y' || confirmation == 'y' || confirmation == 'N' || confirmation == 'n'){
+            return confirmation;
+        }
+        printf("\nPlease enter Y or N: ");
+        fflush(stdout);
+    }
+}
+
 void redraw(fileEntry *entries, int count, int cursor, int firstDraw) {
     int show = count < 10 ? count : 10;
-
     if(!firstDraw){
         // Move back to the top of the UI block before repainting it.
         printf("\033[%dA", show + 2);
         printf("\r");
         printf("\033[J");
     }
-
     printf("Use UP/DOWN to navigate, SPACE to select, ENTER to confirm, Q/X/Ctrl+C to cancel\n\n");
-
     for (int i = 0; i < show; i++) {
         if (i == cursor) printf("\033[7m");
-
-        printf("[%s] %-30s  %.1f MB  %.0f days old  score: %.1f\n",
+        printf("[%s] %-30s  %.1f KB  %.0f days old  score: %.1f\n",
             entries[i].selected ? "x" : " ",
             entries[i].name,
-            entries[i].size / 1e6,
+            entries[i].size / 1e3,
             entries[i].lastUsed,
             entries[i].score);
 
         if (i == cursor) printf("\033[0m");
     }
-
     fflush(stdout);
 }
 
@@ -160,7 +190,7 @@ executorResult interactiveRemoval(char*dirPath){
     for (int i = 0; i < show + 2; i++) printf("\n");
 
     fflush(stdout);
-    tcflush(STDIN_FILENO, TCIFLUSH);
+    discardPendingInput();
 
 
     enableRawMode(&old);
@@ -171,6 +201,7 @@ executorResult interactiveRemoval(char*dirPath){
         char c=getchar();
         if(c=='q' || c=='Q' || c=='x' || c=='X' || c==3){
             disableRawMode(&old);
+            discardPendingInput(); //so that if from previous inoutif any leftover was remained its nit carriedin the next promport
             printf("\nInteractive removal cancelled.\n");
             for(int i=0;i<count;i++){
                 free(entries[i].name);
@@ -196,6 +227,7 @@ executorResult interactiveRemoval(char*dirPath){
         }
     }
     disableRawMode(&old);
+    discardPendingInput();
 
 
     off_t totalSize=0;
@@ -209,14 +241,20 @@ executorResult interactiveRemoval(char*dirPath){
     result.shouldExit=0;
     result.statusCode=0;
 
-    printf("\nReclaimable: %.2f MB of space\n",totalSize/1e6);
-    //this extra two lines of flush were wriitten to drain extra characers if use accidentally presse extra characters before conformation to not cause wrong confitrm
+    if(totalSize == 0){
+        printf("\nNo files selected.\n");
+        for(int i=0;i<count;i++){
+            free(entries[i].name);
+            free(entries[i].fullPath);
+        }
+        free(entries);
+        return result;
+    }
+
+    printf("\nReclaimable: %.2f KB of space\n",totalSize/1e3);
     printf("Confirm Deletion ? (Y/N): ");
     fflush(stdout);
-    int confirmation;
-    do {
-        confirmation = getchar();
-    } while (confirmation == '\n' || confirmation == '\r');
+    int confirmation = readDeletionConfirmation();
 
     if(confirmation=='Y' || confirmation=='y'){
         for(int i=0;i<show;i++){
@@ -226,7 +264,7 @@ executorResult interactiveRemoval(char*dirPath){
                     result.statusCode=1;
                     perror(entries[i].fullPath);
                     printf("Are you sure you wish to continue (Y/N)? :");
-                    char cont=getchar();
+                    char cont=readDeletionConfirmation();
                     if(cont=='Y' || cont=='y'){
                         continue;
                     }
@@ -237,6 +275,7 @@ executorResult interactiveRemoval(char*dirPath){
             }
         }
     }
+    discardPendingInput();
     //free all names of from the entries dynamic array
     for(int i=0;i<count;i++){
         free(entries[i].name);
