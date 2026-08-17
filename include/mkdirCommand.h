@@ -3,6 +3,6 @@
 #include "parser.h"
 #include "executor.h"
 
-executorResult mkdirCommand(); 
+executorResult mkdirCommand(Command *newcommand); 
 
 #endif
